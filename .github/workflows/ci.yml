@@ -1,0 +1,47 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Set up Go
+        uses: actions/setup-go@v3
+        with:
+          go-version-file: go.mod
+
+      - name: Set up golandci-lint
+        uses: golangci/golangci-lint-action@v3
+        with:
+          version: v2.7.2
+          args: --timeout=5m
+
+      - name: Check Go formatting
+        run: |
+          test -z "$(gofmt -l cmd internal)"
+
+      - name: Build API image
+        run: DOCKER_BUILDKIT=0 docker build -t autonoma-api:ci .
+
+      - name: Validate Docker Compose
+        run: docker compose config >/dev/null
+
+      - name: Run Go Lint
+        run: golangci-lint run
+
+      - name: Run Python tests
+        run: |
+          cd ai_runtime
+          python -m pytest -c pyproject.toml ../tests/ai_runtime
+
+      - name: Run Go tests
+        run: go test ./...
