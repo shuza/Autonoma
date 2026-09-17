@@ -39,8 +39,8 @@ Implement:
 
 - [ ] Company
 - [ ] Contact
-- [ ] Lead
-- [ ] Workflow
+- [x] Lead
+- [x] Workflow
 - [ ] WorkflowStep
 - [ ] ToolExecution
 - [ ] Approval

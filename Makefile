@@ -21,7 +21,7 @@ test-python:
 	$(PYTEST)
 
 run-api:
-	go run ./cmd/apii
+	go run ./cmd/api
 
 up:
 	DOCKER_BUILDKIT=$(DOCKER_BUILDKIT) $(DOCKER_COMPOSE) up --build

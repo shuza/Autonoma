@@ -1,22 +1,32 @@
 package httpserver
 
 import (
-	"encoding/json"
-	"log/slog"
 	"net/http"
 	"time"
 
+	"github.com/gin-gonic/gin"
 	"github.com/shuza/Autonoma/internal/platform/config"
 	"github.com/shuza/Autonoma/internal/platform/health"
 )
 
 func New(cfg config.Config) *http.Server {
-	mux := http.NewServeMux()
-	mux.HandleFunc("/healthz", handleHealth)
-	mux.HandleFunc("/", handleNotFound)
+	return NewWithDependencies(cfg, nil)
+}
+
+func NewWithDependencies(ctf config.Config, leadCreator leadCreator) *http.Server {
+	gin.SetMode(gin.ReleaseMode)
+
+	router := gin.New()
+	router.HandleMethodNotAllowed = true
+	router.NoRoute(handleNotFound)
+	router.NoMethod(handleMethodNotAllowed)
+
+	router.GET("/healthz", handleHealth)
+	router.POST("/v1/leads", handleCreateLead(leadCreator))
+
 	return &http.Server{
-		Addr:              cfg.Address(),
-		Handler:           mux,
+		Addr:              ctf.Address(),
+		Handler:           router,
 		ReadTimeout:       10 * time.Second,
 		WriteTimeout:      10 * time.Second,
 		IdleTimeout:       60 * time.Second,
@@ -24,14 +34,15 @@ func New(cfg config.Config) *http.Server {
 	}
 }
 
-func handleHealth(w http.ResponseWriter, _ *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(health.Check()); err != nil {
-		slog.Error("failed health check", err)
-		http.Error(w, "failed health check", http.StatusInternalServerError)
-	}
+func handleHealth(c *gin.Context) {
+	c.Header("Content-Type", "application/json")
+	c.JSON(http.StatusOK, health.Check())
 }
 
-func handleNotFound(w http.ResponseWriter, r *http.Request) {
-	http.NotFound(w, r)
+func handleNotFound(c *gin.Context) {
+	c.Status(http.StatusNotFound)
+}
+
+func handleMethodNotAllowed(c *gin.Context) {
+	c.String(http.StatusMethodNotAllowed, "Method not allowed")
 }

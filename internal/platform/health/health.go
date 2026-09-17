@@ -5,5 +5,5 @@ type Status struct {
 }
 
 func Check() Status {
-	return Status{Status: "OK"}
+	return Status{Status: "ok"}
 }
