@@ -27,6 +27,9 @@ go.work.sum
 # env file
 .env
 
+# Local DOkcer bind-mount data
+volumes/
+
 # Editor/IDE
 # .idea/
 # .vscode/

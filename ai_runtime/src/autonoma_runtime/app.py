@@ -1,16 +1,16 @@
-"""Minimal AI runtime entrypoint for Phase0."""
+"""Minimal AI runtime entrypoint for Phase 0."""
 
 from dataclasses import dataclass
 from typing import Final
 
-READY_STATUE: Final[str] = "ready"
+READY_STATUS: Final[str] = "ready"
 RUNTIME_NAME: Final[str] = "autonoma-ai-runtime"
 
 
 @dataclass(frozen=True)
 class RuntimeApp:
     name: str = RUNTIME_NAME
-    statue: str = READY_STATUE
+    status: str = READY_STATUS
 
 
 def create_app() -> RuntimeApp:
@@ -19,7 +19,7 @@ def create_app() -> RuntimeApp:
 
 def main() -> None:
     app = create_app()
-    print(f"{app.name}:{app.statue}")
+    print(f"{app.name}:{app.status}")
 
 
 if __name__ == "__main__":
