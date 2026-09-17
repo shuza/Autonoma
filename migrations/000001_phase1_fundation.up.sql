@@ -10,7 +10,7 @@ CREATE TABLE leads (
 
 CREATE TABLE workflows (
     id UUID PRIMARY KEY,
-    lead_id TEXT NOT NULL REFERENCES leads(id) ON DELETE CASCADE,
+    lead_id UUID NOT NULL REFERENCES leads(id) ON DELETE CASCADE,
     status TEXT NOT NULL,
     created_at TIMESTAMPTZ DEFAULT now(),
     updated_at TIMESTAMPTZ DEFAULT now()

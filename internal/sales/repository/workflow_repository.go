@@ -41,7 +41,7 @@ func (r *WorkflowRepository) Create(ctx context.Context, workflow domain.Workflo
 		return domain.Workflow{}, fmt.Errorf("failed to create workflow: %w", err)
 	}
 
-	return domain.Workflow{}, nil
+	return workflow, nil
 }
 
 func (r *WorkflowRepository) ListByLeadID(ctx context.Context, leadID string) ([]domain.Workflow, error) {
