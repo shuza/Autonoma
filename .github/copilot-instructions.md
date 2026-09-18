@@ -110,7 +110,19 @@ Before coding:
 2. Identify the current phase in `docs/IMPLEMENTATION_PLAN.md`.
 3. Check existing architectural decisions.
 4. Implement the smallest useful vertical slice.
-5. Do not implement future phases without explicit instruction.
+5. Complete every phase step by step in small slices; do not batch the full remaining scope of a phase into one implementation step unless the user explicitly asks for that.
+6. When a phase has already started, continue from the next smallest useful slice rather than restating or jumping ahead to the whole phase.
+7. Do not implement future phases without explicit instruction.
+
+## Interpreting "check next step"
+
+WHen the user asks to "check the next step", always:
+
+1. inspect the current phase in `docs/IMPLEMENTATION_PLAN.md`
+2. identify what is already complete in that phase
+3. propose only the next smallest useful vertical slice inside that same phase.
+4. avoid jumping to the full remaining phase scope.
+5. avoid starting a later phase unless explicitly requested.
 
 After coding:
 

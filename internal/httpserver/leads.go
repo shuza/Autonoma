@@ -22,16 +22,22 @@ type createLeadRequest struct {
 }
 
 type createLeadResponse struct {
+	Company  companyResponse  `json:"company"`
 	Lead     leadResponse     `json:"lead"`
 	Workflow workflowResponse `json:"workflow"`
 }
 
+type companyResponse struct {
+	ID      string `json:"id"`
+	Name    string `json:"name"`
+	Website string `json:"website"`
+}
+
 type leadResponse struct {
-	ID          string            `json:"id"`
-	CompanyName string            `json:"company_name"`
-	Website     string            `json:"website"`
-	Source      string            `json:"source"`
-	Status      domain.LeadStatus `json:"status"`
+	ID        string            `json:"id"`
+	CompanyID string            `json:"company_id"`
+	Source    string            `json:"source"`
+	Status    domain.LeadStatus `json:"status"`
 }
 
 type workflowResponse struct {
@@ -64,12 +70,16 @@ func handleCreateLead(creator leadCreator) gin.HandlerFunc {
 		}
 
 		c.JSON(http.StatusCreated, createLeadResponse{
+			Company: companyResponse{
+				ID:      result.Company.ID,
+				Name:    result.Company.Name,
+				Website: result.Company.Website,
+			},
 			Lead: leadResponse{
-				ID:          result.Lead.ID,
-				CompanyName: result.Lead.CompanyName,
-				Website:     result.Lead.Website,
-				Source:      result.Lead.Source,
-				Status:      result.Lead.Status,
+				ID:        result.Lead.ID,
+				CompanyID: result.Company.ID,
+				Source:    result.Lead.Source,
+				Status:    result.Lead.Status,
 			},
 			Workflow: workflowResponse{
 				ID:     result.Workflow.ID,

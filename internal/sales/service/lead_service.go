@@ -11,12 +11,14 @@ import (
 )
 
 type LeadService struct {
+	companies *repository.CompanyRepository
 	leads     *repository.LeadRepository
 	workflows *repository.WorkflowRepository
 }
 
-func NewLeadService(leads *repository.LeadRepository, workflows *repository.WorkflowRepository) *LeadService {
+func NewLeadService(companies *repository.CompanyRepository, leads *repository.LeadRepository, workflows *repository.WorkflowRepository) *LeadService {
 	return &LeadService{
+		companies: companies,
 		leads:     leads,
 		workflows: workflows,
 	}
@@ -27,12 +29,22 @@ func (s *LeadService) CreateLead(ctx context.Context, input CreateLeadInput) (Cr
 		return CreateLeadResult{}, fmt.Errorf("company name is required")
 	}
 
+	company := domain.Company{
+		ID:      uuid.NewString(),
+		Name:    input.CompanyName,
+		Website: input.Website,
+	}
+
+	createdCompany, err := s.companies.Create(ctx, company)
+	if err != nil {
+		return CreateLeadResult{}, fmt.Errorf("failed to create company: %w", err)
+	}
+
 	lead := domain.Lead{
-		ID:          uuid.NewString(),
-		CompanyName: input.CompanyName,
-		Website:     input.Website,
-		Source:      input.Source,
-		Status:      domain.LeadStatusNew,
+		ID:        uuid.NewString(),
+		CompanyID: createdCompany.ID,
+		Source:    input.Source,
+		Status:    domain.LeadStatusNew,
 	}
 
 	createdLead, err := s.leads.Create(ctx, lead)
@@ -52,6 +64,7 @@ func (s *LeadService) CreateLead(ctx context.Context, input CreateLeadInput) (Cr
 	}
 
 	return CreateLeadResult{
+		Company:  createdCompany,
 		Lead:     createdLead,
 		Workflow: createdWorkflow,
 	}, nil
@@ -64,6 +77,7 @@ type CreateLeadInput struct {
 }
 
 type CreateLeadResult struct {
+	Company  domain.Company
 	Lead     domain.Lead
 	Workflow domain.Workflow
 }

@@ -9,11 +9,10 @@ const (
 )
 
 type Lead struct {
-	ID          string
-	CompanyName string
-	Website     string
-	Source      string
-	Status      LeadStatus
-	CreatedAt   time.Time
-	UpdatedAt   time.Time
+	ID        string
+	CompanyID string
+	Source    string
+	Status    LeadStatus
+	CreatedAt time.Time
+	UpdatedAt time.Time
 }

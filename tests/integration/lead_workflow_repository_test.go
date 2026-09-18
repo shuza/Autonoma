@@ -43,13 +43,24 @@ func TestLeadAndWorkflowRepositoriesPersistRecords(t *testing.T) {
 
 	leadRepository := repository.NewLeadRepository(pgStore)
 	workflowRepository := repository.NewWorkflowRepository(pgStore)
+	companyRepository := repository.NewCompanyRepository(pgStore)
+
+	company := domain.Company{
+		ID:      uuid.NewString(),
+		Name:    "Acme Corp",
+		Website: "https://acme.test",
+	}
+
+	createdCompany, err := companyRepository.Create(ctx, company)
+	if err != nil {
+		t.Fatalf("failed to create company: %v", err)
+	}
 
 	lead := domain.Lead{
-		ID:          uuid.NewString(),
-		CompanyName: "Acme Corp",
-		Website:     "https://acme.test",
-		Source:      "manual",
-		Status:      domain.LeadStatusNew,
+		ID:        uuid.NewString(),
+		CompanyID: createdCompany.ID,
+		Source:    "manual",
+		Status:    domain.LeadStatusNew,
 	}
 
 	createdLead, err := leadRepository.Create(ctx, lead)
@@ -72,12 +83,25 @@ func TestLeadAndWorkflowRepositoriesPersistRecords(t *testing.T) {
 		t.Fatalf("failed to get lead by id: %v", err)
 	}
 
-	if storedLead.CompanyName != lead.CompanyName {
-		t.Fatalf("expected company name %q, got %q", lead.CompanyName, storedLead.CompanyName)
+	if storedLead.CompanyID != lead.CompanyID {
+		t.Fatalf("expected company name %q, got %q", lead.CompanyID, storedLead.CompanyID)
 	}
 
 	if storedLead.CreatedAt.IsZero() || storedLead.UpdatedAt.IsZero() {
 		t.Fatal("expected postgres-managed timestamps to be populated for lead")
+	}
+
+	storedCompany, err := companyRepository.GetByID(ctx, createdCompany.ID)
+	if err != nil {
+		t.Fatalf("failed to get company by id: %v", err)
+	}
+
+	if storedCompany.Name != createdCompany.Name {
+		t.Fatalf("expected company name %q, got %q", createdCompany.Name, storedCompany.Name)
+	}
+
+	if storedCompany.CreatedAt.IsZero() || storedCompany.UpdatedAt.IsZero() {
+		t.Fatal("expected postgres-managed timestamps to be populated for company")
 	}
 
 	workflows, err := workflowRepository.ListByLeadID(ctx, createdLead.ID)

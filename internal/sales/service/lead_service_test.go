@@ -10,7 +10,7 @@ import (
 func TestCreateLeadRequiresCompanyName(t *testing.T) {
 	t.Parallel()
 
-	service := NewLeadService(&repository.LeadRepository{}, &repository.WorkflowRepository{})
+	service := NewLeadService(&repository.CompanyRepository{}, &repository.LeadRepository{}, &repository.WorkflowRepository{})
 	_, err := service.CreateLead(context.Background(), CreateLeadInput{})
 	if err == nil {
 		t.Fatalf("expected error for missing company name")
@@ -20,8 +20,12 @@ func TestCreateLeadRequiresCompanyName(t *testing.T) {
 func TestCreateLeadReturnsRepositoryErrors(t *testing.T) {
 	t.Parallel()
 
-	service := NewLeadService(&repository.LeadRepository{}, &repository.WorkflowRepository{})
-	_, err := service.CreateLead(context.Background(), CreateLeadInput{})
+	service := NewLeadService(&repository.CompanyRepository{}, &repository.LeadRepository{}, &repository.WorkflowRepository{})
+	_, err := service.CreateLead(context.Background(), CreateLeadInput{
+		CompanyName: "Acme",
+		Website:     "http://acme.test",
+		Source:      "manual",
+	})
 	if err == nil {
 		t.Fatalf("expected repository configuration error")
 	}

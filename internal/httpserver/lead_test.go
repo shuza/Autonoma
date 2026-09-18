@@ -42,12 +42,16 @@ func TestCreateLead(t *testing.T) {
 			body: `{"company_name": "Acme","website":"https://acme.test","source":"inbound"}`,
 			creator: &stubLeadCreator{
 				result: service.CreateLeadResult{
+					Company: domain.Company{
+						ID:      "company-1",
+						Name:    "Acme",
+						Website: "http://acme.test",
+					},
 					Lead: domain.Lead{
-						ID:          "lead-1",
-						CompanyName: "Acme",
-						Website:     "https://acme.test",
-						Source:      "inbound",
-						Status:      domain.LeadStatusNew,
+						ID:        "lead-1",
+						CompanyID: "company-1",
+						Source:    "inbound",
+						Status:    domain.LeadStatusNew,
 					},
 					Workflow: domain.Workflow{
 						ID:     "workflow-1",
@@ -71,6 +75,10 @@ func TestCreateLead(t *testing.T) {
 
 				if response.Lead.ID != "lead-1" || response.Workflow.ID != "workflow-1" {
 					t.Fatalf("unexpected response payload: %+v", response)
+				}
+
+				if response.Company.ID != "company-1" || response.Lead.CompanyID != "company-1" {
+					t.Fatalf("unexpected company linkage in response payload: %+v", response)
 				}
 			},
 		},

@@ -17,6 +17,9 @@ test: test-go test-python
 test-go:
 	go test $(GO_PACKAGES)
 
+test-integration:
+	AUTONOMA_DATABASE_URL=postgres://autonoma:autonoma@127.0.0.1:5432/autonoma?sslmode=disable go test ./tests/integration
+
 test-python:
 	$(PYTEST)
 

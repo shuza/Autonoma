@@ -1,2 +1,3 @@
 DROP TABLE IF EXISTS workflows;
+DROP TABLE IF EXISTS companies;
 DROP TABLE IF EXISTS leads;

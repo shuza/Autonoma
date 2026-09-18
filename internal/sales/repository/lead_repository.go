@@ -23,8 +23,8 @@ func (r *LeadRepository) Create(ctx context.Context, lead domain.Lead) (domain.L
 	}
 
 	const query = `
-		INSERT INTO leads (id, company_name, website, source, status)
-		VALUES ($1, $2, $3, $4, $5)
+		INSERT INTO leads (id, company_id, source, status)
+		VALUES ($1, $2, $3, $4)
 		RETURNING created_at, updated_at
 	`
 
@@ -32,8 +32,7 @@ func (r *LeadRepository) Create(ctx context.Context, lead domain.Lead) (domain.L
 		ctx,
 		query,
 		lead.ID,
-		lead.CompanyName,
-		lead.Website,
+		lead.CompanyID,
 		lead.Source,
 		lead.Status,
 	).Scan(&lead.CreatedAt, &lead.UpdatedAt)
@@ -50,7 +49,7 @@ func (r *LeadRepository) GetByID(ctx context.Context, id string) (domain.Lead, e
 	}
 
 	const query = `
-		SELECT id, company_name, website, source, status, created_at, updated_at
+		SELECT id, company_id, source, status, created_at, updated_at
 		FROM leads
 		WHERE id = $1
 	`
@@ -60,7 +59,7 @@ func (r *LeadRepository) GetByID(ctx context.Context, id string) (domain.Lead, e
 		ctx,
 		query,
 		id,
-	).Scan(&lead.ID, &lead.CompanyName, &lead.Website, &lead.Source, &lead.Status, &lead.CreatedAt, &lead.UpdatedAt)
+	).Scan(&lead.ID, &lead.CompanyID, &lead.Source, &lead.Status, &lead.CreatedAt, &lead.UpdatedAt)
 	if err != nil {
 		slog.Error("failed to get lead by id", "error", err)
 		return domain.Lead{}, fmt.Errorf("failed to get lead by id: %w", err)

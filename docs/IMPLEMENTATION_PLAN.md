@@ -10,19 +10,19 @@ Do not build a multi-agent system before proving the first workflow.
 
 ## Phase 0 — Foundation
 
-- [ ] Repository initialized
-- [ ] Go module initialized
-- [ ] Python AI runtime skeleton
-- [ ] Makefile
-- [ ] Docker Compose
-- [ ] PostgreSQL
-- [ ] Redis
-- [ ] API health endpoint
-- [ ] CI
-- [ ] Formatting
-- [ ] Linting
-- [ ] Tests
-- [ ] `.env.example`
+- [x] Repository initialized
+- [x] Go module initialized
+- [x] Python AI runtime skeleton
+- [x] Makefile
+- [x] Docker Compose
+- [x] PostgreSQL
+- [x] Redis
+- [x] API health endpoint
+- [x] CI
+- [x] Formatting
+- [x] Linting
+- [x] Tests
+- [x] `.env.example`
 
 Definition of done:
 
@@ -37,7 +37,7 @@ Definition of done:
 
 Implement:
 
-- [ ] Company
+- [x] Company
 - [ ] Contact
 - [x] Lead
 - [x] Workflow
