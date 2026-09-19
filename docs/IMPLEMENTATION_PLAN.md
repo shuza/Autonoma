@@ -38,7 +38,7 @@ Definition of done:
 Implement:
 
 - [x] Company
-- [ ] Contact
+- [x] Contact
 - [x] Lead
 - [x] Workflow
 - [ ] WorkflowStep

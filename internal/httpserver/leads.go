@@ -16,13 +16,17 @@ type leadCreator interface {
 }
 
 type createLeadRequest struct {
-	CompanyName string `json:"company_name"`
-	Website     string `json:"website"`
-	Source      string `json:"source"`
+	CompanyName      string `json:"company_name"`
+	Website          string `json:"website"`
+	Source           string `json:"source"`
+	ContactFirstName string `json:"contact_first_name"`
+	ContactLastName  string `json:"contact_last_name"`
+	ContactEmail     string `json:"contact_email"`
 }
 
 type createLeadResponse struct {
 	Company  companyResponse  `json:"company"`
+	Contact  contactResponse  `json:"contact"`
 	Lead     leadResponse     `json:"lead"`
 	Workflow workflowResponse `json:"workflow"`
 }
@@ -31,6 +35,13 @@ type companyResponse struct {
 	ID      string `json:"id"`
 	Name    string `json:"name"`
 	Website string `json:"website"`
+}
+
+type contactResponse struct {
+	ID        string `json:"id"`
+	FirstName string `json:"first_name"`
+	LastName  string `json:"last_name"`
+	Email     string `json:"email"`
 }
 
 type leadResponse struct {
@@ -60,9 +71,12 @@ func handleCreateLead(creator leadCreator) gin.HandlerFunc {
 		}
 
 		result, err := creator.CreateLead(c.Request.Context(), service.CreateLeadInput{
-			CompanyName: request.CompanyName,
-			Website:     request.Website,
-			Source:      request.Source,
+			CompanyName:      request.CompanyName,
+			Website:          request.Website,
+			Source:           request.Source,
+			ContactFirstName: request.ContactFirstName,
+			ContactLastName:  request.ContactLastName,
+			ContactEmail:     request.ContactEmail,
 		})
 		if err != nil {
 			writeCreateLeadError(c, err)
@@ -74,6 +88,12 @@ func handleCreateLead(creator leadCreator) gin.HandlerFunc {
 				ID:      result.Company.ID,
 				Name:    result.Company.Name,
 				Website: result.Company.Website,
+			},
+			Contact: contactResponse{
+				ID:        result.Contact.ID,
+				FirstName: result.Contact.FirstName,
+				LastName:  result.Contact.LastName,
+				Email:     result.Contact.Email,
 			},
 			Lead: leadResponse{
 				ID:        result.Lead.ID,
@@ -92,7 +112,7 @@ func handleCreateLead(creator leadCreator) gin.HandlerFunc {
 
 func writeCreateLeadError(c *gin.Context, err error) {
 	status := http.StatusInternalServerError
-	if err.Error() == "company name is required" {
+	if err.Error() == "company name is required" || err.Error() == "contact email is required" {
 		status = http.StatusBadRequest
 	}
 	c.String(status, fmt.Sprintf("create lead: %v", err))

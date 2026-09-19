@@ -12,13 +12,15 @@ import (
 
 type LeadService struct {
 	companies *repository.CompanyRepository
+	contacts  *repository.ContactRepository
 	leads     *repository.LeadRepository
 	workflows *repository.WorkflowRepository
 }
 
-func NewLeadService(companies *repository.CompanyRepository, leads *repository.LeadRepository, workflows *repository.WorkflowRepository) *LeadService {
+func NewLeadService(companies *repository.CompanyRepository, contact *repository.ContactRepository, leads *repository.LeadRepository, workflows *repository.WorkflowRepository) *LeadService {
 	return &LeadService{
 		companies: companies,
+		contacts:  contact,
 		leads:     leads,
 		workflows: workflows,
 	}
@@ -27,6 +29,9 @@ func NewLeadService(companies *repository.CompanyRepository, leads *repository.L
 func (s *LeadService) CreateLead(ctx context.Context, input CreateLeadInput) (CreateLeadResult, error) {
 	if input.CompanyName == "" {
 		return CreateLeadResult{}, fmt.Errorf("company name is required")
+	}
+	if input.ContactEmail == "" {
+		return CreateLeadResult{}, fmt.Errorf("contact email is required")
 	}
 
 	company := domain.Company{
@@ -38,6 +43,19 @@ func (s *LeadService) CreateLead(ctx context.Context, input CreateLeadInput) (Cr
 	createdCompany, err := s.companies.Create(ctx, company)
 	if err != nil {
 		return CreateLeadResult{}, fmt.Errorf("failed to create company: %w", err)
+	}
+
+	contact := domain.Contact{
+		ID:        uuid.NewString(),
+		CompanyID: createdCompany.ID,
+		FirstName: input.ContactFirstName,
+		LastName:  input.ContactLastName,
+		Email:     input.ContactEmail,
+	}
+
+	createdContact, err := s.contacts.Create(ctx, contact)
+	if err != nil {
+		return CreateLeadResult{}, fmt.Errorf("failed to create contact: %w", err)
 	}
 
 	lead := domain.Lead{
@@ -65,19 +83,24 @@ func (s *LeadService) CreateLead(ctx context.Context, input CreateLeadInput) (Cr
 
 	return CreateLeadResult{
 		Company:  createdCompany,
+		Contact:  createdContact,
 		Lead:     createdLead,
 		Workflow: createdWorkflow,
 	}, nil
 }
 
 type CreateLeadInput struct {
-	CompanyName string
-	Website     string
-	Source      string
+	CompanyName      string
+	Website          string
+	Source           string
+	ContactFirstName string
+	ContactLastName  string
+	ContactEmail     string
 }
 
 type CreateLeadResult struct {
 	Company  domain.Company
+	Contact  domain.Contact
 	Lead     domain.Lead
 	Workflow domain.Workflow
 }

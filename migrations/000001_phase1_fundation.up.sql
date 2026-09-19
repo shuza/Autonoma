@@ -17,6 +17,17 @@ CREATE TABLE leads
     updated_at TIMESTAMPTZ DEFAULT now()
 );
 
+CREATE TABLE contacts
+(
+    id         UUID PRIMARY KEY,
+    company_id UUID NOT NULL REFERENCES companies (id) ON DELETE CASCADE,
+    first_name TEXT NOT NULL,
+    last_name  TEXT NOT NULL,
+    email      TEXT NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT now(),
+    updated_at TIMESTAMPTZ DEFAULT now()
+);
+
 CREATE TABLE workflows
 (
     id         UUID PRIMARY KEY,

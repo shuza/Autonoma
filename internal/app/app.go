@@ -24,9 +24,10 @@ func New(ctx context.Context, cfg config.Config) (*App, error) {
 	leadRepository := repository.NewLeadRepository(pgStore)
 	workflowRepository := repository.NewWorkflowRepository(pgStore)
 	companyRepository := repository.NewCompanyRepository(pgStore)
+	contactRepository := repository.NewContactRepository(pgStore)
 
 	return &App{
-		LeadService: service.NewLeadService(companyRepository, leadRepository, workflowRepository),
+		LeadService: service.NewLeadService(companyRepository, contactRepository, leadRepository, workflowRepository),
 		store:       pgStore,
 	}, nil
 }

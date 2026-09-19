@@ -39,13 +39,20 @@ func TestCreateLead(t *testing.T) {
 	}{
 		{
 			name: "returns created",
-			body: `{"company_name": "Acme","website":"https://acme.test","source":"inbound"}`,
+			body: `{"company_name": "Acme","website":"https://acme.test","source":"inbound","contact_first_name":"Ada","contact_last_name":"Lovelace","contact_email":"ada@acme.test"}`,
 			creator: &stubLeadCreator{
 				result: service.CreateLeadResult{
 					Company: domain.Company{
 						ID:      "company-1",
 						Name:    "Acme",
 						Website: "http://acme.test",
+					},
+					Contact: domain.Contact{
+						ID:        "contact-1",
+						CompanyID: "company-1",
+						FirstName: "Ada",
+						LastName:  "Lovelace",
+						Email:     "ada@acme.test",
 					},
 					Lead: domain.Lead{
 						ID:        "lead-1",
@@ -68,6 +75,10 @@ func TestCreateLead(t *testing.T) {
 					t.Fatalf("expected company name to be forwarded, got %q", creator.input.CompanyName)
 				}
 
+				if creator.input.ContactEmail != "ada@acme.test" {
+					t.Fatalf("expected contact email to be forwarded, got %q", creator.input.ContactEmail)
+				}
+
 				var response createLeadResponse
 				if err := json.Unmarshal(recorder.Body.Bytes(), &response); err != nil {
 					t.Fatalf("expected valid json response, got error: %v", err)
@@ -79,6 +90,10 @@ func TestCreateLead(t *testing.T) {
 
 				if response.Company.ID != "company-1" || response.Lead.CompanyID != "company-1" {
 					t.Fatalf("unexpected company linkage in response payload: %+v", response)
+				}
+
+				if response.Contact.ID != "contact-1" || response.Lead.CompanyID != "company-1" {
+					t.Fatalf("unexpected contact linkage in response payload: %+v", response)
 				}
 			},
 		},
@@ -92,6 +107,14 @@ func TestCreateLead(t *testing.T) {
 			name:           "returns bad request for validation errors",
 			body:           `{"company_name":""}`,
 			creator:        &stubLeadCreator{err: errors.New("company name is required")},
+			expectedStatus: http.StatusBadRequest,
+		},
+		{
+			name: "returns bad request for missing contact email",
+			body: `{"company_name": "Acme","contact_first_name":"Ada"}`,
+			creator: &stubLeadCreator{
+				err: errors.New("contact email is required"),
+			},
 			expectedStatus: http.StatusBadRequest,
 		},
 		{
