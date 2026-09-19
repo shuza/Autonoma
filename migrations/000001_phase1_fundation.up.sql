@@ -39,10 +39,20 @@ CREATE TABLE workflows
 
 CREATE TABLE workflow_steps
 (
-    id UUID PRIMARY KEY,
+    id          UUID PRIMARY KEY,
     workflow_id UUID NOT NULL REFERENCES workflows (id) ON DELETE CASCADE,
-    name TEXT NOT NULL,
-    status TEXT NOT NULL,
-    created_at TIMESTAMPTZ DEFAULT now(),
-    updated_at TIMESTAMPTZ DEFAULT now()
+    name        TEXT NOT NULL,
+    status      TEXT NOT NULL,
+    created_at  TIMESTAMPTZ DEFAULT now(),
+    updated_at  TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE TABLE tool_executions
+(
+    id               UUID PRIMARY KEY,
+    workflow_step_id UUID NOT NULL REFERENCES workflow_steps (id) ON DELETE CASCADE,
+    tool_name        TEXT NOT NULL,
+    status           TEXT NOT NULL created_at TIMESTAMPTZ DEFAULT now(),
+    created_at       TIMESTAMPTZ DEFAULT now(),
+    updated_at       TIMESTAMPTZ DEFAULT now()
 );

@@ -42,7 +42,7 @@ Implement:
 - [x] Lead
 - [x] Workflow
 - [x] WorkflowStep
-- [ ] ToolExecution
+- [x] ToolExecution
 - [ ] Approval
 - [ ] AuditEvent
 

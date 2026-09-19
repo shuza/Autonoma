@@ -44,6 +44,7 @@ func TestLeadAndWorkflowRepositoriesPersistRecords(t *testing.T) {
 	leadRepository := repository.NewLeadRepository(pgStore)
 	workflowRepository := repository.NewWorkflowRepository(pgStore)
 	workflowStepRepository := repository.NewWorkflowStepRepository(pgStore)
+	toolExecutionRepository := repository.NewToolExecutionRepository(pgStore)
 	companyRepository := repository.NewCompanyRepository(pgStore)
 
 	company := domain.Company{
@@ -87,9 +88,21 @@ func TestLeadAndWorkflowRepositoriesPersistRecords(t *testing.T) {
 		Status:     domain.WorkflowStepStatusPending,
 	}
 
-	createdStep, err := workflowStepRepository.Create(context.Background(), step)
+	createdStep, err := workflowStepRepository.Create(ctx, step)
 	if err != nil {
 		t.Fatalf("failed to create workflow step: %v", err)
+	}
+
+	toolExecution := domain.ToolExecution{
+		ID:             uuid.NewString(),
+		WorkflowStepID: createdStep.ID,
+		ToolName:       "web_search",
+		Status:         domain.ToolExecutionStatusPending,
+	}
+
+	createdToolExecution, err := toolExecutionRepository.Create(ctx, toolExecution)
+	if err != nil {
+		t.Fatalf("failed to create tool execution: %v", err)
 	}
 
 	storedLead, err := leadRepository.GetByID(ctx, createdLead.ID)
@@ -131,7 +144,7 @@ func TestLeadAndWorkflowRepositoriesPersistRecords(t *testing.T) {
 		t.Fatal("expected postgres-managed timestamps to be populated for workflow")
 	}
 
-	steps, err := workflowStepRepository.ListByWorkflowID(context.Background(), createdStep.ID)
+	steps, err := workflowStepRepository.ListByWorkflowID(context.Background(), createdWorkflow.ID)
 	if err != nil {
 		t.Fatalf("failed to list workflow steps by workflow id: %v", err)
 	}
@@ -146,6 +159,23 @@ func TestLeadAndWorkflowRepositoriesPersistRecords(t *testing.T) {
 
 	if steps[0].CreatedAt.IsZero() || steps[0].UpdatedAt.IsZero() {
 		t.Fatal("expected postgres-managed timestamps to be populated for workflow step")
+	}
+
+	toolExecutions, err := toolExecutionRepository.ListByWorkflowStepID(ctx, createdStep.ID)
+	if err != nil {
+		t.Fatalf("failed to list tool executions by workflow step id: %v", err)
+	}
+
+	if len(toolExecutions) != 1 {
+		t.Fatalf("expected 1 tool execution, got %d", len(toolExecutions))
+	}
+
+	if toolExecutions[0].ID != createdToolExecution.ID || toolExecutions[0].WorkflowStepID != createdToolExecution.WorkflowStepID || toolExecutions[0].ToolName != createdToolExecution.ToolName || toolExecutions[0].Status != createdToolExecution.Status {
+		t.Fatalf("unexpected tool execution payload: %+v", toolExecutions[0])
+	}
+
+	if toolExecutions[0].CreatedAt.IsZero() || toolExecutions[0].UpdatedAt.IsZero() {
+		t.Fatal("expected postgres-managed timestamps to be populated for tool execution")
 	}
 }
 
