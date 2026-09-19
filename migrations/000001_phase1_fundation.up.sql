@@ -36,3 +36,13 @@ CREATE TABLE workflows
     created_at TIMESTAMPTZ DEFAULT now(),
     updated_at TIMESTAMPTZ DEFAULT now()
 );
+
+CREATE TABLE workflow_steps
+(
+    id UUID PRIMARY KEY,
+    workflow_id UUID NOT NULL REFERENCES workflows (id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    status TEXT NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT now(),
+    updated_at TIMESTAMPTZ DEFAULT now()
+);

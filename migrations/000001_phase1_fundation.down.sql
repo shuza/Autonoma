@@ -1,3 +1,4 @@
+DROP TABLE IF EXISTS workflow_steps;
 DROP TABLE IF EXISTS workflows;
 DROP TABLE IF EXISTS leads;
 DROP TABLE IF EXISTS contacts;

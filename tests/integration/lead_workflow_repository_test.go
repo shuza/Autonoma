@@ -43,6 +43,7 @@ func TestLeadAndWorkflowRepositoriesPersistRecords(t *testing.T) {
 
 	leadRepository := repository.NewLeadRepository(pgStore)
 	workflowRepository := repository.NewWorkflowRepository(pgStore)
+	workflowStepRepository := repository.NewWorkflowStepRepository(pgStore)
 	companyRepository := repository.NewCompanyRepository(pgStore)
 
 	company := domain.Company{
@@ -74,8 +75,21 @@ func TestLeadAndWorkflowRepositoriesPersistRecords(t *testing.T) {
 		Status: domain.WorkflowStatusNew,
 	}
 
-	if _, err := workflowRepository.Create(ctx, workflow); err != nil {
+	createdWorkflow, err := workflowRepository.Create(ctx, workflow)
+	if err != nil {
 		t.Fatalf("failed to create workflow: %v", err)
+	}
+
+	step := domain.WorkflowStep{
+		ID:         uuid.NewString(),
+		WorkflowID: createdWorkflow.ID,
+		Name:       "load-context",
+		Status:     domain.WorkflowStepStatusPending,
+	}
+
+	createdStep, err := workflowStepRepository.Create(context.Background(), step)
+	if err != nil {
+		t.Fatalf("failed to create workflow step: %v", err)
 	}
 
 	storedLead, err := leadRepository.GetByID(ctx, createdLead.ID)
@@ -115,6 +129,23 @@ func TestLeadAndWorkflowRepositoriesPersistRecords(t *testing.T) {
 
 	if workflows[0].CreatedAt.IsZero() || workflows[0].UpdatedAt.IsZero() {
 		t.Fatal("expected postgres-managed timestamps to be populated for workflow")
+	}
+
+	steps, err := workflowStepRepository.ListByWorkflowID(context.Background(), createdStep.ID)
+	if err != nil {
+		t.Fatalf("failed to list workflow steps by workflow id: %v", err)
+	}
+
+	if len(steps) != 1 {
+		t.Fatalf("expected 1 workflow step, got %d", len(steps))
+	}
+
+	if steps[0].ID != createdStep.ID || steps[0].Name != createdStep.Name || steps[0].Status != createdStep.Status {
+		t.Fatalf("unexpected workflow step payload: %+v", steps[0])
+	}
+
+	if steps[0].CreatedAt.IsZero() || steps[0].UpdatedAt.IsZero() {
+		t.Fatal("expected postgres-managed timestamps to be populated for workflow step")
 	}
 }
 
