@@ -73,7 +73,7 @@ func (s *LeadService) CreateLead(ctx context.Context, input CreateLeadInput) (Cr
 	workflow := domain.Workflow{
 		ID:     uuid.NewString(),
 		LeadID: createdLead.ID,
-		Status: domain.WorkflowStatusNew,
+		Status: domain.WorkflowStatusPending,
 	}
 
 	createdWorkflow, err := s.workflows.Create(ctx, workflow)

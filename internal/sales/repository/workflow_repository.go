@@ -80,3 +80,26 @@ func (r *WorkflowRepository) ListByLeadID(ctx context.Context, leadID string) ([
 
 	return workflows, nil
 }
+
+func (r *WorkflowRepository) UpdateStatus(ctx context.Context, workflowID string, status domain.WorkflowStatus) (domain.Workflow, error) {
+	if r == nil || r.store == nil || r.store.Pool() == nil {
+		return domain.Workflow{}, errors.New("workflow repository is not configured")
+	}
+
+	const query = `
+		Update workflows
+		SET status = $2, updated_at = now()
+		WHERE id = $1
+		RETURNING id, lead_id, status, created_at, updated_at
+	`
+
+	var workflow domain.Workflow
+	err := r.store.Pool().QueryRow(ctx, query, workflowID, status).
+		Scan(&workflow.ID, &workflow.LeadID, &workflow.Status, &workflow.CreatedAt, &workflow.UpdatedAt)
+	if err != nil {
+		slog.Error("failed to update workflow status", "workflow_id", workflowID, "status", status, "error", err)
+		return domain.Workflow{}, fmt.Errorf("failed to update workflow status: %w", err)
+	}
+
+	return workflow, nil
+}

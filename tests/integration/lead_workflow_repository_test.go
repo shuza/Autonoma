@@ -58,6 +58,10 @@ func TestLeadAndWorkflowRepositoriesPersistRecords(t *testing.T) {
 		t.Fatalf("expected 1 workflow, got %d", len(workflows))
 	}
 
+	if workflows[0].Status != fixture.workflow.Status {
+		t.Fatalf("expected workflow status %q, got %q", fixture.workflow.Status, workflows[0].Status)
+	}
+
 	if workflows[0].CreatedAt.IsZero() || workflows[0].UpdatedAt.IsZero() {
 		t.Fatal("expected postgres-managed timestamps to be populated for workflow")
 	}
@@ -128,6 +132,36 @@ func TestLeadAndWorkflowRepositoriesPersistRecords(t *testing.T) {
 
 	if auditEvents[0].CreatedAt.IsZero() || auditEvents[0].UpdatedAt.IsZero() {
 		t.Fatal("expected postgres-managed timestamps to be populated for audit event")
+	}
+}
+
+func TestWorkflowStatusTransitionIsPersisted(t *testing.T) {
+	ctx, databaseURL := setupIntegrationDatabase(t)
+	pgStore := newIntegrationStore(t, ctx, databaseURL)
+	defer pgStore.Close()
+
+	fixture := createPersistenceFixture(t, ctx, pgStore)
+
+	if err := fixture.workflow.TransitionTo(domain.WorkflowStatusRunning); err != nil {
+		t.Fatalf("failed to transition workflow status: %v", err)
+	}
+
+	updatedWorkflow, err := fixture.workflowRepository.UpdateStatus(ctx, fixture.workflow.ID, fixture.workflow.Status)
+	if err != nil {
+		t.Fatalf("failed to update workflow status: %v", err)
+	}
+
+	if updatedWorkflow.Status != domain.WorkflowStatusRunning {
+		t.Fatalf("expected updated workflow status %q, got %q", domain.WorkflowStatusRunning, updatedWorkflow.Status)
+	}
+
+	workflows, err := fixture.workflowRepository.ListByLeadID(ctx, fixture.lead.ID)
+	if err != nil {
+		t.Fatalf("failed to reload workflows after status update: %v", err)
+	}
+
+	if len(workflows) != 1 || workflows[0].Status != domain.WorkflowStatusRunning {
+		t.Fatalf("unexpected workflow status after status update: %+v", workflows)
 	}
 }
 
@@ -296,7 +330,7 @@ func createPersistenceFixture(t *testing.T, ctx context.Context, pgStore *store.
 	workflow := domain.Workflow{
 		ID:     uuid.NewString(),
 		LeadID: createdLead.ID,
-		Status: domain.WorkflowStatusNew,
+		Status: domain.WorkflowStatusPending,
 	}
 
 	createdWorkflow, err := workflowRepository.Create(ctx, workflow)
