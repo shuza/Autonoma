@@ -17,6 +17,215 @@ import (
 )
 
 func TestLeadAndWorkflowRepositoriesPersistRecords(t *testing.T) {
+	ctx, databaseURL := setupIntegrationDatabase(t)
+	pgStore := newIntegrationStore(t, ctx, databaseURL)
+	defer pgStore.Close()
+
+	fixture := createPersistenceFixture(t, ctx, pgStore)
+
+	storedLead, err := fixture.leadRepository.GetByID(ctx, fixture.lead.ID)
+	if err != nil {
+		t.Fatalf("failed to get lead by id: %v", err)
+	}
+
+	if storedLead.CompanyID != fixture.lead.CompanyID {
+		t.Fatalf("expected company name %q, got %q", fixture.lead.CompanyID, storedLead.CompanyID)
+	}
+
+	if storedLead.CreatedAt.IsZero() || storedLead.UpdatedAt.IsZero() {
+		t.Fatal("expected postgres-managed timestamps to be populated for lead")
+	}
+
+	storedCompany, err := fixture.companyRepository.GetByID(ctx, fixture.company.ID)
+	if err != nil {
+		t.Fatalf("failed to get company by id: %v", err)
+	}
+
+	if storedCompany.Name != fixture.company.Name {
+		t.Fatalf("expected company name %q, got %q", fixture.company.Name, storedCompany.Name)
+	}
+
+	if storedCompany.CreatedAt.IsZero() || storedCompany.UpdatedAt.IsZero() {
+		t.Fatal("expected postgres-managed timestamps to be populated for company")
+	}
+
+	workflows, err := fixture.workflowRepository.ListByLeadID(ctx, fixture.lead.ID)
+	if err != nil {
+		t.Fatalf("failed to list workflows by lead id: %v", err)
+	}
+
+	if len(workflows) != 1 {
+		t.Fatalf("expected 1 workflow, got %d", len(workflows))
+	}
+
+	if workflows[0].CreatedAt.IsZero() || workflows[0].UpdatedAt.IsZero() {
+		t.Fatal("expected postgres-managed timestamps to be populated for workflow")
+	}
+
+	steps, err := fixture.workflowStepRepository.ListByWorkflowID(ctx, fixture.workflow.ID)
+	if err != nil {
+		t.Fatalf("failed to list workflow steps by workflow id: %v", err)
+	}
+
+	if len(steps) != 1 {
+		t.Fatalf("expected 1 workflow step, got %d", len(steps))
+	}
+
+	if steps[0].ID != fixture.workflowStep.ID || steps[0].Name != fixture.workflowStep.Name || steps[0].Status != fixture.workflowStep.Status {
+		t.Fatalf("unexpected workflow step payload: %+v", steps[0])
+	}
+
+	if steps[0].CreatedAt.IsZero() || steps[0].UpdatedAt.IsZero() {
+		t.Fatal("expected postgres-managed timestamps to be populated for workflow step")
+	}
+
+	toolExecutions, err := fixture.toolExecutionRepository.ListByWorkflowStepID(ctx, fixture.workflowStep.ID)
+	if err != nil {
+		t.Fatalf("failed to list tool executions by workflow step id: %v", err)
+	}
+
+	if len(toolExecutions) != 1 {
+		t.Fatalf("expected 1 tool execution, got %d", len(toolExecutions))
+	}
+
+	if toolExecutions[0].ID != fixture.toolExecution.ID || toolExecutions[0].WorkflowStepID != fixture.toolExecution.WorkflowStepID || toolExecutions[0].ToolName != fixture.toolExecution.ToolName || toolExecutions[0].Status != fixture.toolExecution.Status {
+		t.Fatalf("unexpected tool execution payload: %+v", toolExecutions[0])
+	}
+
+	if toolExecutions[0].CreatedAt.IsZero() || toolExecutions[0].UpdatedAt.IsZero() {
+		t.Fatal("expected postgres-managed timestamps to be populated for tool execution")
+	}
+
+	approvals, err := fixture.approvalRepository.ListByToolExecutionID(ctx, fixture.toolExecution.ID)
+	if err != nil {
+		t.Fatalf("failed to list approvals by tool execution id: %v", err)
+	}
+
+	if len(approvals) != 1 {
+		t.Fatalf("expected 1 approval, got %d", len(approvals))
+	}
+
+	if approvals[0].ID != fixture.approval.ID || approvals[0].ToolExecutionID != fixture.approval.ToolExecutionID || approvals[0].RequestedBy != fixture.approval.RequestedBy || approvals[0].Status != fixture.approval.Status {
+		t.Fatalf("unexpected approval payload: %+v", approvals[0])
+	}
+
+	if approvals[0].CreatedAt.IsZero() || approvals[0].UpdatedAt.IsZero() {
+		t.Fatal("expected postgres-managed timestamps to be populated for approval")
+	}
+
+	auditEvents, err := fixture.auditEventRepository.ListByWorkflowID(ctx, fixture.workflow.ID)
+	if err != nil {
+		t.Fatalf("failed to list audit events by workflow id: %v", err)
+	}
+
+	if len(auditEvents) != 1 {
+		t.Fatalf("expected 1 audit event, got %d", len(auditEvents))
+	}
+
+	if auditEvents[0].ID != fixture.auditEvent.ID || auditEvents[0].WorkflowID != fixture.auditEvent.WorkflowID || auditEvents[0].EventType != fixture.auditEvent.EventType || auditEvents[0].Actor != fixture.auditEvent.Actor {
+		t.Fatalf("unexpected audit event payload: %+v", auditEvents[0])
+	}
+
+	if auditEvents[0].CreatedAt.IsZero() || auditEvents[0].UpdatedAt.IsZero() {
+		t.Fatal("expected postgres-managed timestamps to be populated for audit event")
+	}
+}
+
+func TestLeadWorkflowStateAndBusinessContextSurviveProcessRestart(t *testing.T) {
+	ctx, databaseURL := setupIntegrationDatabase(t)
+
+	firstStore := newIntegrationStore(t, ctx, databaseURL)
+	fixture := createPersistenceFixture(t, ctx, firstStore)
+	firstStore.Close()
+
+	restartedStore := newIntegrationStore(t, ctx, databaseURL)
+	defer restartedStore.Close()
+
+	leadRepository := repository.NewLeadRepository(restartedStore)
+	workflowRepository := repository.NewWorkflowRepository(restartedStore)
+	workflowStepRepository := repository.NewWorkflowStepRepository(restartedStore)
+	toolExecutionRepository := repository.NewToolExecutionRepository(restartedStore)
+	approvalRepository := repository.NewApprovalRepository(restartedStore)
+	auditEventRepository := repository.NewAuditEventRepository(restartedStore)
+	companyRepository := repository.NewCompanyRepository(restartedStore)
+
+	company, err := companyRepository.GetByID(ctx, fixture.company.ID)
+	if err != nil {
+		t.Fatalf("failed to reload company after restart: %v", err)
+	}
+	if company.Name != fixture.company.Name || company.Website != fixture.company.Website {
+		t.Fatalf("unexpected company after restart: %+v", err)
+	}
+
+	lead, err := leadRepository.GetByID(ctx, fixture.lead.ID)
+	if err != nil {
+		t.Fatalf("failed to reload lead after restart: %v", err)
+	}
+	if lead.CompanyID != fixture.lead.CompanyID || lead.Source != fixture.lead.Source || lead.Status != fixture.lead.Status {
+		t.Fatalf("unexpected lead after restart: %+v", err)
+	}
+
+	workflows, err := workflowRepository.ListByLeadID(ctx, fixture.lead.ID)
+	if err != nil {
+		t.Fatalf("failed to reload workflow after restart: %v", err)
+	}
+	if len(workflows) != 1 || workflows[0].ID != fixture.workflow.ID || workflows[0].Status != fixture.workflow.Status {
+		t.Fatalf("unexpected workflow after restart: %+v", err)
+	}
+
+	steps, err := workflowStepRepository.ListByWorkflowID(ctx, fixture.workflow.ID)
+	if err != nil {
+		t.Fatalf("failed to reload workflow steps after restart: %v", err)
+	}
+	if len(steps) != 1 || steps[0].ID != fixture.workflowStep.ID || steps[0].Status != fixture.workflowStep.Status {
+		t.Fatalf("unexpected workflow step after restart: %+v", err)
+	}
+
+	toolExecution, err := toolExecutionRepository.ListByWorkflowStepID(ctx, fixture.workflowStep.ID)
+	if err != nil {
+		t.Fatalf("failed to reload tool execution after restart: %v", err)
+	}
+	if len(toolExecution) != 1 || toolExecution[0].ID != fixture.toolExecution.ID || toolExecution[0].Status != fixture.toolExecution.Status {
+		t.Fatalf("unexpected tool execution after restart: %+v", err)
+	}
+
+	approvals, err := approvalRepository.ListByToolExecutionID(ctx, fixture.toolExecution.ID)
+	if err != nil {
+		t.Fatalf("failed to reload approvals after restart: %+v", err)
+	}
+	if len(approvals) != 1 || approvals[0].ID != fixture.approval.ID || approvals[0].Status != fixture.approval.Status {
+		t.Fatalf("unexpected approvals after restart: %+v", err)
+	}
+
+	auditEvent, err := auditEventRepository.ListByWorkflowID(ctx, fixture.workflow.ID)
+	if err != nil {
+		t.Fatalf("failed to reload audit event after restart: %+v", err)
+	}
+	if len(auditEvent) != 1 || auditEvent[0].ID != fixture.auditEvent.ID || auditEvent[0].EventType != fixture.auditEvent.EventType {
+		t.Fatalf("unexpected audit event after restart: %+v", err)
+	}
+}
+
+type persistenceFixture struct {
+	company                 domain.Company
+	lead                    domain.Lead
+	workflow                domain.Workflow
+	workflowStep            domain.WorkflowStep
+	toolExecution           domain.ToolExecution
+	approval                domain.Approval
+	auditEvent              domain.AuditEvent
+	companyRepository       *repository.CompanyRepository
+	leadRepository          *repository.LeadRepository
+	workflowRepository      *repository.WorkflowRepository
+	workflowStepRepository  *repository.WorkflowStepRepository
+	toolExecutionRepository *repository.ToolExecutionRepository
+	approvalRepository      *repository.ApprovalRepository
+	auditEventRepository    *repository.AuditEventRepository
+}
+
+func setupIntegrationDatabase(t *testing.T) (context.Context, string) {
+	t.Helper()
+
 	databaseURL := os.Getenv("AUTONOMA_DATABASE_URL")
 	if databaseURL == "" {
 		t.Skip("AUTONOMA_DATABASE_URL is required for integration tests")
@@ -25,8 +234,9 @@ func TestLeadAndWorkflowRepositoriesPersistRecords(t *testing.T) {
 	ctx := context.Background()
 	conn, err := pgx.Connect(ctx, databaseURL)
 	if err != nil {
-		t.Fatalf("failed to connect postgres: %v", err)
+		t.Fatalf("failed to connect to postgres: %v", err)
 	}
+
 	migrationsPath := filepath.Join("..", "..", "migrations")
 	applyMigrations(t, ctx, conn, migrationsPath, ".down.sql")
 	applyMigrations(t, ctx, conn, migrationsPath, ".up.sql")
@@ -35,11 +245,22 @@ func TestLeadAndWorkflowRepositoriesPersistRecords(t *testing.T) {
 		conn.Close(ctx)
 	})
 
+	return ctx, databaseURL
+}
+
+func newIntegrationStore(t *testing.T, ctx context.Context, databaseURL string) *store.PostgresStore {
+	t.Helper()
+
 	pgStore, err := store.NewPostgresStore(ctx, databaseURL)
 	if err != nil {
 		t.Fatalf("failed to create postgres store: %v", err)
 	}
-	defer pgStore.Close()
+
+	return pgStore
+}
+
+func createPersistenceFixture(t *testing.T, ctx context.Context, pgStore *store.PostgresStore) persistenceFixture {
+	t.Helper()
 
 	leadRepository := repository.NewLeadRepository(pgStore)
 	workflowRepository := repository.NewWorkflowRepository(pgStore)
@@ -131,111 +352,21 @@ func TestLeadAndWorkflowRepositoriesPersistRecords(t *testing.T) {
 		t.Fatalf("failed to create audit event: %v", err)
 	}
 
-	storedLead, err := leadRepository.GetByID(ctx, createdLead.ID)
-	if err != nil {
-		t.Fatalf("failed to get lead by id: %v", err)
-	}
-
-	if storedLead.CompanyID != lead.CompanyID {
-		t.Fatalf("expected company name %q, got %q", lead.CompanyID, storedLead.CompanyID)
-	}
-
-	if storedLead.CreatedAt.IsZero() || storedLead.UpdatedAt.IsZero() {
-		t.Fatal("expected postgres-managed timestamps to be populated for lead")
-	}
-
-	storedCompany, err := companyRepository.GetByID(ctx, createdCompany.ID)
-	if err != nil {
-		t.Fatalf("failed to get company by id: %v", err)
-	}
-
-	if storedCompany.Name != createdCompany.Name {
-		t.Fatalf("expected company name %q, got %q", createdCompany.Name, storedCompany.Name)
-	}
-
-	if storedCompany.CreatedAt.IsZero() || storedCompany.UpdatedAt.IsZero() {
-		t.Fatal("expected postgres-managed timestamps to be populated for company")
-	}
-
-	workflows, err := workflowRepository.ListByLeadID(ctx, createdLead.ID)
-	if err != nil {
-		t.Fatalf("failed to list workflows by lead id: %v", err)
-	}
-
-	if len(workflows) != 1 {
-		t.Fatalf("expected 1 workflow, got %d", len(workflows))
-	}
-
-	if workflows[0].CreatedAt.IsZero() || workflows[0].UpdatedAt.IsZero() {
-		t.Fatal("expected postgres-managed timestamps to be populated for workflow")
-	}
-
-	steps, err := workflowStepRepository.ListByWorkflowID(context.Background(), createdWorkflow.ID)
-	if err != nil {
-		t.Fatalf("failed to list workflow steps by workflow id: %v", err)
-	}
-
-	if len(steps) != 1 {
-		t.Fatalf("expected 1 workflow step, got %d", len(steps))
-	}
-
-	if steps[0].ID != createdStep.ID || steps[0].Name != createdStep.Name || steps[0].Status != createdStep.Status {
-		t.Fatalf("unexpected workflow step payload: %+v", steps[0])
-	}
-
-	if steps[0].CreatedAt.IsZero() || steps[0].UpdatedAt.IsZero() {
-		t.Fatal("expected postgres-managed timestamps to be populated for workflow step")
-	}
-
-	toolExecutions, err := toolExecutionRepository.ListByWorkflowStepID(ctx, createdStep.ID)
-	if err != nil {
-		t.Fatalf("failed to list tool executions by workflow step id: %v", err)
-	}
-
-	if len(toolExecutions) != 1 {
-		t.Fatalf("expected 1 tool execution, got %d", len(toolExecutions))
-	}
-
-	if toolExecutions[0].ID != createdToolExecution.ID || toolExecutions[0].WorkflowStepID != createdToolExecution.WorkflowStepID || toolExecutions[0].ToolName != createdToolExecution.ToolName || toolExecutions[0].Status != createdToolExecution.Status {
-		t.Fatalf("unexpected tool execution payload: %+v", toolExecutions[0])
-	}
-
-	if toolExecutions[0].CreatedAt.IsZero() || toolExecutions[0].UpdatedAt.IsZero() {
-		t.Fatal("expected postgres-managed timestamps to be populated for tool execution")
-	}
-
-	approvals, err := approvalRepository.ListByToolExecutionID(ctx, createdToolExecution.ID)
-	if err != nil {
-		t.Fatalf("failed to list approvals by tool execution id: %v", err)
-	}
-
-	if len(approvals) != 1 {
-		t.Fatalf("expected 1 approval, got %d", len(approvals))
-	}
-
-	if approvals[0].ID != createdApproval.ID || approvals[0].ToolExecutionID != createdApproval.ToolExecutionID || approvals[0].RequestedBy != createdApproval.RequestedBy || approvals[0].Status != createdApproval.Status {
-		t.Fatalf("unexpected approval payload: %+v", approvals[0])
-	}
-
-	if approvals[0].CreatedAt.IsZero() || approvals[0].UpdatedAt.IsZero() {
-		t.Fatal("expected postgres-managed timestamps to be populated for approval")
-	}
-
-	auditEvents, err := auditEventRepository.ListByWorkflowID(ctx, createdWorkflow.ID)
-	if err != nil {
-		t.Fatalf("failed to list audit events by workflow id: %v", err)
-	}
-
-	if len(auditEvents) != 1 {
-		t.Fatalf("expected 1 audit event, got %d", len(auditEvents))
-	}
-
-	if auditEvents[0].ID != createdAuditEvent.ID || auditEvents[0].WorkflowID != createdAuditEvent.WorkflowID || auditEvents[0].EventType != createdAuditEvent.EventType || auditEvents[0].Actor != createdAuditEvent.Actor {
-		t.Fatalf("unexpected audit event payload: %+v", auditEvents[0])
-	}
-
-	if auditEvents[0].CreatedAt.IsZero() || auditEvents[0].UpdatedAt.IsZero() {
-		t.Fatal("expected postgres-managed timestamps to be populated for audit event")
+	return persistenceFixture{
+		company:                 createdCompany,
+		lead:                    createdLead,
+		workflow:                createdWorkflow,
+		workflowStep:            createdStep,
+		toolExecution:           createdToolExecution,
+		approval:                createdApproval,
+		auditEvent:              createdAuditEvent,
+		companyRepository:       companyRepository,
+		leadRepository:          leadRepository,
+		workflowRepository:      workflowRepository,
+		workflowStepRepository:  workflowStepRepository,
+		toolExecutionRepository: toolExecutionRepository,
+		approvalRepository:      approvalRepository,
+		auditEventRepository:    auditEventRepository,
 	}
 }
 

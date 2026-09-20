@@ -363,11 +363,11 @@ Create a reproducible demo:
 
 Current phase:
 
-**Phase 0 — Foundation**
+**Phase 2 — Workflow engine**
 
 Current task:
 
-**Build the minimal repository and development environment.**
+**Implement the next smallest useful Phase 2 vertical slice.**
 
 Do not implement future phases until the current phase is complete.
 
