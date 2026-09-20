@@ -64,12 +64,12 @@ Implement:
 
 - [x] workflow state machine
 - [x] step execution
-- [ ] persistent state
+- [x] persistent state
 - [x] resume
-- [ ] cancellation
-- [ ] failure handling
-- [ ] idempotency
-- [ ] retry policy
+- [x] cancellation
+- [x] failure handling
+- [x] idempotency
+- [x] retry policy
 
 States:
 

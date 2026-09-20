@@ -26,7 +26,9 @@ type Workflow struct {
 
 var allowedWorkflowTransitions = map[WorkflowStatus]map[WorkflowStatus]struct{}{
 	WorkflowStatusPending: {
-		WorkflowStatusRunning: {}},
+		WorkflowStatusRunning:   {},
+		WorkflowStatusCancelled: {},
+	},
 	WorkflowStatusRunning: {
 		WorkflowStatusWaitingApproval: {},
 		WorkflowStatusCompleted:       {},

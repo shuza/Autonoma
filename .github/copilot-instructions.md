@@ -116,7 +116,7 @@ Before coding:
 
 ## Interpreting "check next step"
 
-WHen the user asks to "check the next step", always:
+When the user asks to "check the next step", always:
 
 1. inspect the current phase in `docs/IMPLEMENTATION_PLAN.md`
 2. identify what is already complete in that phase

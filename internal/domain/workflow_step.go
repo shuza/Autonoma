@@ -8,6 +8,8 @@ const (
 	WorkflowStepStatusPending   WorkflowStepStatus = "PENDING"
 	WorkflowStepStatusRunning   WorkflowStepStatus = "RUNNING"
 	WorkflowStepStatusCompleted WorkflowStepStatus = "COMPLETED"
+	WorkflowStepStatusFailed    WorkflowStepStatus = "FAILED"
+	WorkflowStepStatusCancelled WorkflowStepStatus = "CANCELLED"
 )
 
 type WorkflowStep struct {
