@@ -57,6 +57,22 @@ func TestCancelWorkflowRejectsNonCancellableStatus(t *testing.T) {
 	}
 }
 
+func TestCancelWorkflowReturnsCancelledWorkflowIdempotently(t *testing.T) {
+	t.Parallel()
+
+	service := NewWorkflowExecutionService(&repository.WorkflowRepository{}, &repository.WorkflowStepRepository{})
+	workflow, err := service.CancelWorkflow(context.Background(), domain.Workflow{
+		ID:     "workflow-1",
+		Status: domain.WorkflowStatusCancelled,
+	})
+	if err != nil {
+		t.Fatalf("expected cancelled workflow to be retuned idempotently: %v", err)
+	}
+	if workflow.Status != domain.WorkflowStatusCancelled {
+		t.Fatalf("expected cancelled workflow status, got %s", workflow.Status)
+	}
+}
+
 func TestCompleteStepRejectsNonRunningWorkflow(t *testing.T) {
 	t.Parallel()
 
@@ -73,7 +89,7 @@ func TestCompleteStepRejectsNonRunningWorkflow(t *testing.T) {
 	}
 }
 
-func TestFailStepRejectNonRunningStep(t *testing.T) {
+func TestFailStepRejectsNonRunningStep(t *testing.T) {
 	t.Parallel()
 
 	service := NewWorkflowExecutionService(&repository.WorkflowRepository{}, &repository.WorkflowStepRepository{})
@@ -86,5 +102,45 @@ func TestFailStepRejectNonRunningStep(t *testing.T) {
 	})
 	if err == nil {
 		t.Fatalf("expected failing a non-running step to fail")
+	}
+}
+
+func TestCompleteStepReturnsCompletedStepIdempotently(t *testing.T) {
+	t.Parallel()
+
+	service := NewWorkflowExecutionService(&repository.WorkflowRepository{}, &repository.WorkflowStepRepository{})
+	result, err := service.CompleteStep(context.Background(), domain.Workflow{
+		ID:     "workflow-1",
+		Status: domain.WorkflowStatusCompleted,
+	}, domain.WorkflowStep{
+		ID:     "step-1",
+		Status: domain.WorkflowStepStatusCompleted,
+	})
+	if err != nil {
+		t.Fatalf("expected completed step to be returned idempotently %v", err)
+	}
+
+	if result.Step.Status != domain.WorkflowStepStatusCompleted {
+		t.Fatalf("expected completed step status, got %s", result.Step.Status)
+	}
+}
+
+func TestFailStepReturnsFailedStepIdempotently(t *testing.T) {
+	t.Parallel()
+
+	service := NewWorkflowExecutionService(&repository.WorkflowRepository{}, &repository.WorkflowStepRepository{})
+	result, err := service.CompleteStep(context.Background(), domain.Workflow{
+		ID:     "workflow-1",
+		Status: domain.WorkflowStatusCompleted,
+	}, domain.WorkflowStep{
+		ID:     "step-1",
+		Status: domain.WorkflowStepStatusFailed,
+	})
+	if err != nil {
+		t.Fatalf("expected failed step to be returned idempotently %v", err)
+	}
+
+	if result.Step.Status != domain.WorkflowStepStatusFailed {
+		t.Fatalf("expected failed step status, got %s", result.Step.Status)
 	}
 }

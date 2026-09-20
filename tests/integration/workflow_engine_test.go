@@ -144,7 +144,7 @@ func TestWorkflowCompletionIsPersisted(t *testing.T) {
 		t.Fatalf("failed to update workflow status to running: %v", err)
 	}
 
-	completedStep, err := fixture.workflowStepRepository.UpdateStatus(ctx, fixture.workflow.ID, domain.WorkflowStepStatusCompleted)
+	completedStep, err := fixture.workflowStepRepository.UpdateStatus(ctx, fixture.workflowStep.ID, domain.WorkflowStepStatusCompleted)
 	if err != nil {
 		t.Fatalf("failed to update workflow step status to completed: %v", err)
 	}

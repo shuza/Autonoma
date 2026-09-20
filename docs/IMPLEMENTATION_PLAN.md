@@ -69,7 +69,7 @@ Implement:
 - [x] cancellation
 - [x] failure handling
 - [x] idempotency
-- [x] retry policy
+- [ ] retry policy
 
 States:
 
