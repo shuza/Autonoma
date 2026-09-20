@@ -56,3 +56,13 @@ CREATE TABLE tool_executions
     created_at       TIMESTAMPTZ DEFAULT now(),
     updated_at       TIMESTAMPTZ DEFAULT now()
 );
+
+CREATE TABLE approvals
+(
+    id                UUID PRIMARY KEY,
+    tool_execution_id UUID NOT NULL REFERENCES tool_executions (id) ON DELETE CASCADE,
+    status            TEXT NOT NULL,
+    requested_by      TEXT NOT NULL,
+    created_at        TIMESTAMPTZ DEFAULT now(),
+    updated_at        TIMESTAMPTZ DEFAULT now()
+);

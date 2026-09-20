@@ -43,7 +43,7 @@ Implement:
 - [x] Workflow
 - [x] WorkflowStep
 - [x] ToolExecution
-- [ ] Approval
+- [x] Approval
 - [ ] AuditEvent
 
 Add:

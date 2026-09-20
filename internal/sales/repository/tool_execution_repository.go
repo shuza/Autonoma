@@ -50,7 +50,7 @@ func (r *ToolExecutionRepository) ListByWorkflowStepID(ctx context.Context, work
 	}
 
 	const query = `
-		SELECT id, workflow_step_id, tool_name, status, create, created_at, updated_at
+		SELECT id, workflow_step_id, tool_name, status, created_at, updated_at
 		FROM tool_executions
 		WHERE workflow_step_id = $1
 		ORDER BY created_at ASC

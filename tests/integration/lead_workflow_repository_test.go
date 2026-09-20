@@ -45,6 +45,7 @@ func TestLeadAndWorkflowRepositoriesPersistRecords(t *testing.T) {
 	workflowRepository := repository.NewWorkflowRepository(pgStore)
 	workflowStepRepository := repository.NewWorkflowStepRepository(pgStore)
 	toolExecutionRepository := repository.NewToolExecutionRepository(pgStore)
+	approvalRepository := repository.NewApprovalRepository(pgStore)
 	companyRepository := repository.NewCompanyRepository(pgStore)
 
 	company := domain.Company{
@@ -103,6 +104,18 @@ func TestLeadAndWorkflowRepositoriesPersistRecords(t *testing.T) {
 	createdToolExecution, err := toolExecutionRepository.Create(ctx, toolExecution)
 	if err != nil {
 		t.Fatalf("failed to create tool execution: %v", err)
+	}
+
+	approval := domain.Approval{
+		ID:              uuid.NewString(),
+		ToolExecutionID: createdToolExecution.ID,
+		Status:          domain.ApprovalStatusPending,
+		RequestedBy:     "policy-engine",
+	}
+
+	createdApproval, err := approvalRepository.Create(ctx, approval)
+	if err != nil {
+		t.Fatalf("failed to create approval: %v", err)
 	}
 
 	storedLead, err := leadRepository.GetByID(ctx, createdLead.ID)
@@ -176,6 +189,23 @@ func TestLeadAndWorkflowRepositoriesPersistRecords(t *testing.T) {
 
 	if toolExecutions[0].CreatedAt.IsZero() || toolExecutions[0].UpdatedAt.IsZero() {
 		t.Fatal("expected postgres-managed timestamps to be populated for tool execution")
+	}
+
+	approvals, err := approvalRepository.ListByToolExecutionID(ctx, createdToolExecution.ID)
+	if err != nil {
+		t.Fatalf("failed to list approvals by tool execution id: %v", err)
+	}
+
+	if len(approvals) != 1 {
+		t.Fatalf("expected 1 approval, got %d", len(approvals))
+	}
+
+	if approvals[0].ID != createdApproval.ID || approvals[0].ToolExecutionID != createdApproval.ToolExecutionID || approvals[0].RequestedBy != createdApproval.RequestedBy || approvals[0].Status != createdApproval.Status {
+		t.Fatalf("unexpected approval payload: %+v", approvals[0])
+	}
+
+	if approvals[0].CreatedAt.IsZero() || approvals[0].UpdatedAt.IsZero() {
+		t.Fatal("expected postgres-managed timestamps to be populated for approval")
 	}
 }
 
