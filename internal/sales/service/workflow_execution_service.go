@@ -45,8 +45,11 @@ func (s *WorkflowExecutionService) ExecuteNextStep(ctx context.Context, workflow
 	}
 
 	for _, step := range steps {
-		if step.Status != domain.WorkflowStepStatusPending {
-			continue
+		if step.Status == domain.WorkflowStepStatusRunning {
+			return ExecutionNextStepResult{
+				Workflow: workflow,
+				Step:     step,
+			}, nil
 		}
 
 		runningStep, err := s.workflowSteps.UpdateStatus(ctx, step.ID, domain.WorkflowStepStatusRunning)
@@ -55,7 +58,7 @@ func (s *WorkflowExecutionService) ExecuteNextStep(ctx context.Context, workflow
 		}
 
 		return ExecutionNextStepResult{
-			workflow: workflow,
+			Workflow: workflow,
 			Step:     runningStep,
 		}, nil
 	}
@@ -64,6 +67,6 @@ func (s *WorkflowExecutionService) ExecuteNextStep(ctx context.Context, workflow
 }
 
 type ExecutionNextStepResult struct {
-	workflow domain.Workflow
+	Workflow domain.Workflow
 	Step     domain.WorkflowStep
 }

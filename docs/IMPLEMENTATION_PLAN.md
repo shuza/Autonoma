@@ -65,7 +65,7 @@ Implement:
 - [x] workflow state machine
 - [x] step execution
 - [ ] persistent state
-- [ ] resume
+- [x] resume
 - [ ] cancellation
 - [ ] failure handling
 - [ ] idempotency

@@ -70,3 +70,38 @@ func TestWorkflowStepExecutionPersistsRunningState(t *testing.T) {
 		t.Fatalf("unexpected workflow step status after status update: %+v", steps)
 	}
 }
+
+func TestWorkflowResumeReturnsExistingRunningStep(t *testing.T) {
+	ctx, databaseURL := setupIntegrationDatabase(t)
+	pgStore := newIntegrationStore(t, ctx, databaseURL)
+	defer pgStore.Close()
+
+	fixture := createPersistenceFixture(t, ctx, pgStore)
+
+	updatedWorkflow, err := fixture.workflowRepository.UpdateStatus(ctx, fixture.workflow.ID, domain.WorkflowStatusRunning)
+	if err != nil {
+		t.Fatalf("failed to update workflow status to running: %v", err)
+	}
+
+	updatedStep, err := fixture.workflowStepRepository.UpdateStatus(ctx, fixture.workflowStep.ID, domain.WorkflowStepStatusRunning)
+	if err != nil {
+		t.Fatalf("failed to update workflow step status to running: %v", err)
+	}
+
+	if updatedWorkflow.Status != domain.WorkflowStatusRunning {
+		t.Fatalf("expected updated workflow status %q, got %q", domain.WorkflowStatusRunning, updatedWorkflow.Status)
+	}
+
+	if updatedStep.Status != domain.WorkflowStepStatusRunning {
+		t.Fatalf("expected updated workflow step status %q, got %q", domain.WorkflowStepStatusRunning, updatedStep.Status)
+	}
+
+	runningSteps, err := fixture.workflowStepRepository.ListByWorkflowID(ctx, fixture.workflow.ID)
+	if err != nil {
+		t.Fatalf("failed to load workflow steps during resume: %v", err)
+	}
+
+	if len(runningSteps) != 1 || runningSteps[0].Status != domain.WorkflowStepStatusRunning {
+		t.Fatalf("unexpected workflow steps during resume: %+v", runningSteps)
+	}
+}

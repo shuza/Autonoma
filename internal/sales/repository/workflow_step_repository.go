@@ -88,7 +88,7 @@ func (r *WorkflowStepRepository) UpdateStatus(ctx context.Context, stepID string
 
 	const query = `
 		UPDATE workflow_steps
-		SET status = $2, updated_at now()
+		SET status = $2, updated_at = now()
 		WHERE id = $1
 		RETURNING id, workflow_id, name, status, created_at, updated_at
 	`
