@@ -48,9 +48,9 @@ Implement:
 
 Add:
 
-- [ ] migrations
-- [ ] repositories
-- [ ] integration tests
+- [x] migrations
+- [x] repositories
+- [x] integration tests
 
 Definition of done:
 

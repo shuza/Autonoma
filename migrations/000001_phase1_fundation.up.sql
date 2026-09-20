@@ -67,7 +67,7 @@ CREATE TABLE approvals
     updated_at        TIMESTAMPTZ DEFAULT now()
 );
 
-CREATE TABLE audit_evets
+CREATE TABLE audit_events
 (
     id          UUID PRIMARY KEY,
     workflow_id UUID NOT NULL REFERENCES workflows (id) ON DELETE CASCADE,

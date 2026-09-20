@@ -23,7 +23,7 @@ func (r *AuditEventRepository) Create(ctx context.Context, event domain.AuditEve
 	}
 
 	const query = `
-		INSERT INTO audit_evets (id, workflow_id, event_type, actor)
+		INSERT INTO audit_events (id, workflow_id, event_type, actor)
 		VALUES ($1, $2, $3, $4)
 		RETURNING created_at, updated_at
 	`
@@ -51,7 +51,7 @@ func (r *AuditEventRepository) ListByWorkflowID(ctx context.Context, workflowID 
 
 	const query = `
 		SELECT id, workflow_id, event_type, actor, created_at, updated_at
-		FROM audit_evets
+		FROM audit_events
 		WHERE workflow_id = $1
 		ORDER BY created_at ASC
 	`
