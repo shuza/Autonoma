@@ -33,7 +33,7 @@ func (s *WorkflowExecutionService) ExecuteNextStep(ctx context.Context, workflow
 		var err error
 		workflow, err = s.workflows.UpdateStatus(ctx, workflow.ID, workflow.Status)
 		if err != nil {
-			return ExecutionNextStepResult{}, fmt.Errorf("failed to persis workflow status: %w", err)
+			return ExecutionNextStepResult{}, fmt.Errorf("failed to persist workflow status: %w", err)
 		}
 	} else if workflow.Status != domain.WorkflowStatusRunning {
 		return ExecutionNextStepResult{}, fmt.Errorf("workflow status %s is not executable", workflow.Status)
@@ -80,13 +80,13 @@ func (s *WorkflowExecutionService) CancelWorkflow(ctx context.Context, workflow 
 	}
 
 	if workflow.Status == domain.WorkflowStatusCancelled {
-		return domain.Workflow{}, nil
+		return workflow, nil
 	}
 
 	if err := workflow.TransitionTo(domain.WorkflowStatusCancelled); err != nil {
 		return domain.Workflow{}, fmt.Errorf("failed to cancel workflow: %w", err)
 	}
-	cancelledWorkflow, err := s.workflows.UpdateStatus(ctx, workflow.ID, domain.WorkflowStatusCancelled)
+	cancelledWorkflow, err := s.workflows.UpdateStatus(ctx, workflow.ID, workflow.Status)
 	if err != nil {
 		return domain.Workflow{}, fmt.Errorf("failed to persist cancelled workflow status: %w", err)
 	}
@@ -99,15 +99,15 @@ func (s *WorkflowExecutionService) CompleteStep(ctx context.Context, workflow do
 		return ExecutionNextStepResult{}, fmt.Errorf("workflow execution service is not configured")
 	}
 
-	if workflow.Status != domain.WorkflowStatusRunning {
-		return ExecutionNextStepResult{}, fmt.Errorf("workflow status %s cannot complete a step", workflow.Status)
-	}
-
 	if step.Status == domain.WorkflowStepStatusCompleted {
 		return ExecutionNextStepResult{
 			Workflow: workflow,
 			Step:     step,
 		}, nil
+	}
+
+	if workflow.Status != domain.WorkflowStatusRunning {
+		return ExecutionNextStepResult{}, fmt.Errorf("workflow status %s cannot complete a step", workflow.Status)
 	}
 
 	if step.Status != domain.WorkflowStepStatusRunning {
@@ -151,15 +151,15 @@ func (s *WorkflowExecutionService) FailStep(ctx context.Context, workflow domain
 		return ExecutionNextStepResult{}, fmt.Errorf("workflow execution service is not configured")
 	}
 
-	if workflow.Status != domain.WorkflowStatusRunning {
-		return ExecutionNextStepResult{}, fmt.Errorf("workflow status %s cannot fail a step", workflow.Status)
-	}
-
-	if step.Status == domain.WorkflowStepStatusPending {
+	if step.Status == domain.WorkflowStepStatusFailed {
 		return ExecutionNextStepResult{
 			Workflow: workflow,
 			Step:     step,
 		}, nil
+	}
+
+	if workflow.Status != domain.WorkflowStatusRunning {
+		return ExecutionNextStepResult{}, fmt.Errorf("workflow status %s cannot fail a step", workflow.Status)
 	}
 
 	if step.Status != domain.WorkflowStepStatusRunning {
@@ -183,6 +183,41 @@ func (s *WorkflowExecutionService) FailStep(ctx context.Context, workflow domain
 	return ExecutionNextStepResult{
 		Workflow: failedWorkflow,
 		Step:     failedStep,
+	}, nil
+}
+
+func (s *WorkflowExecutionService) RetryStep(ctx context.Context, workflow domain.Workflow, step domain.WorkflowStep) (ExecutionNextStepResult, error) {
+	if s == nil || s.workflows == nil || s.workflowSteps == nil {
+		return ExecutionNextStepResult{}, fmt.Errorf("workflow execution service is not configured")
+	}
+
+	if workflow.Status == domain.WorkflowStatusRunning && step.Status == domain.WorkflowStepStatusRunning {
+		return ExecutionNextStepResult{
+			Workflow: workflow,
+			Step:     step,
+		}, nil
+	}
+
+	if workflow.Status != domain.WorkflowStatusFailed {
+		return ExecutionNextStepResult{}, fmt.Errorf("workflow status %s cannot retry a step", workflow.Status)
+	}
+
+	if step.Status != domain.WorkflowStepStatusFailed {
+		return ExecutionNextStepResult{}, fmt.Errorf("workflow step status %s cannot be retried", step.Status)
+	}
+
+	if err := workflow.TransitionTo(domain.WorkflowStatusRunning); err != nil {
+		return ExecutionNextStepResult{}, fmt.Errorf("failed to move workflow back to running: %w", err)
+	}
+
+	retriedWorkflow, err := s.workflows.UpdateStatus(ctx, workflow.ID, workflow.Status)
+	if err != nil {
+		return ExecutionNextStepResult{}, fmt.Errorf("failed to persist retried workflow step status: %w", err)
+	}
+
+	return ExecutionNextStepResult{
+		Workflow: retriedWorkflow,
+		Step:     step,
 	}, nil
 }
 

@@ -193,3 +193,39 @@ func TestWorkflowFailureIsPersisted(t *testing.T) {
 		t.Fatalf("expected workflow status %q, got %q", domain.WorkflowStatusFailed, failedWorkflow.Status)
 	}
 }
+
+func TestWorkflowRetryIsPersisted(t *testing.T) {
+	ctx, databaseURL := setupIntegrationDatabase(t)
+	pgStore := newIntegrationStore(t, ctx, databaseURL)
+	defer pgStore.Close()
+
+	fixture := createPersistenceFixture(t, ctx, pgStore)
+
+	failedWorkflow, err := fixture.workflowRepository.UpdateStatus(ctx, fixture.workflow.ID, domain.WorkflowStatusFailed)
+	if err != nil {
+		t.Fatalf("failed to update workflow status to failed: %v", err)
+	}
+
+	failedStep, err := fixture.workflowStepRepository.UpdateStatus(ctx, fixture.workflowStep.ID, domain.WorkflowStepStatusFailed)
+	if err != nil {
+		t.Fatalf("failed to update workflow step status to failed: %v", err)
+	}
+
+	retriedWorkflow, err := fixture.workflowRepository.UpdateStatus(ctx, failedWorkflow.ID, domain.WorkflowStatusRunning)
+	if err != nil {
+		t.Fatalf("failed to update workflow status to running: %v", err)
+	}
+
+	retriedStep, err := fixture.workflowStepRepository.UpdateStatus(ctx, failedStep.ID, domain.WorkflowStepStatusRunning)
+	if err != nil {
+		t.Fatalf("failed to update workflow step status to running: %v", err)
+	}
+
+	if retriedWorkflow.Status != domain.WorkflowStatusRunning {
+		t.Fatalf("expected workflow status %q, got %q", domain.WorkflowStatusRunning, retriedWorkflow.Status)
+	}
+
+	if retriedStep.Status != domain.WorkflowStepStatusRunning {
+		t.Fatalf("expected workflow step status %q, got %q", domain.WorkflowStepStatusRunning, retriedStep.Status)
+	}
+}

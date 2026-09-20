@@ -105,6 +105,42 @@ func TestFailStepRejectsNonRunningStep(t *testing.T) {
 	}
 }
 
+func TestRetryStepRejectsNonFailedWorkflow(t *testing.T) {
+	t.Parallel()
+
+	service := NewWorkflowExecutionService(&repository.WorkflowRepository{}, &repository.WorkflowStepRepository{})
+	_, err := service.RetryStep(context.Background(), domain.Workflow{
+		ID:     "workflow-1",
+		Status: domain.WorkflowStatusRunning,
+	}, domain.WorkflowStep{
+		ID:     "step-1",
+		Status: domain.WorkflowStepStatusFailed,
+	})
+	if err == nil {
+		t.Fatalf("expected retry to fail for non-failed workflow")
+	}
+}
+
+func TestRetryStepReturnsRunningStepIdempotently(t *testing.T) {
+	t.Parallel()
+
+	service := NewWorkflowExecutionService(&repository.WorkflowRepository{}, &repository.WorkflowStepRepository{})
+	result, err := service.RetryStep(context.Background(), domain.Workflow{
+		ID:     "workflow-1",
+		Status: domain.WorkflowStatusRunning,
+	}, domain.WorkflowStep{
+		ID:     "step-1",
+		Status: domain.WorkflowStepStatusRunning,
+	})
+	if err != nil {
+		t.Fatalf("expected running step to be returned idempotently %v", err)
+	}
+
+	if result.Workflow.Status != domain.WorkflowStatusRunning || result.Step.Status != domain.WorkflowStepStatusRunning {
+		t.Fatalf("expected running workflow/step to be returned, got workflow=%s step=%s", result.Workflow.Status, result.Step.Status)
+	}
+}
+
 func TestCompleteStepReturnsCompletedStepIdempotently(t *testing.T) {
 	t.Parallel()
 
@@ -129,9 +165,9 @@ func TestFailStepReturnsFailedStepIdempotently(t *testing.T) {
 	t.Parallel()
 
 	service := NewWorkflowExecutionService(&repository.WorkflowRepository{}, &repository.WorkflowStepRepository{})
-	result, err := service.CompleteStep(context.Background(), domain.Workflow{
+	result, err := service.FailStep(context.Background(), domain.Workflow{
 		ID:     "workflow-1",
-		Status: domain.WorkflowStatusCompleted,
+		Status: domain.WorkflowStatusRunning,
 	}, domain.WorkflowStep{
 		ID:     "step-1",
 		Status: domain.WorkflowStepStatusFailed,
