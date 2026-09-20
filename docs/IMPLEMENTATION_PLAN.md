@@ -63,7 +63,7 @@ All workflow state and business context survives a process restart.
 Implement:
 
 - [x] workflow state machine
-- [ ] step execution
+- [x] step execution
 - [ ] persistent state
 - [ ] resume
 - [ ] cancellation

@@ -5,7 +5,9 @@ import "time"
 type WorkflowStepStatus string
 
 const (
-	WorkflowStepStatusPending WorkflowStepStatus = "PENDING"
+	WorkflowStepStatusPending   WorkflowStepStatus = "PENDING"
+	WorkflowStepStatusRunning   WorkflowStepStatus = "RUNNING"
+	WorkflowStepStatusCompleted WorkflowStepStatus = "COMPLETED"
 )
 
 type WorkflowStep struct {

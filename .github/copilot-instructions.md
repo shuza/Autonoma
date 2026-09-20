@@ -120,9 +120,10 @@ WHen the user asks to "check the next step", always:
 
 1. inspect the current phase in `docs/IMPLEMENTATION_PLAN.md`
 2. identify what is already complete in that phase
-3. propose only the next smallest useful vertical slice inside that same phase.
-4. avoid jumping to the full remaining phase scope.
-5. avoid starting a later phase unless explicitly requested.
+3. propose only the next smallest valuable vertical slice inside that same phase that meaningfully progresses the phase toward completion
+4. prefer slices that are small enough to support step-by-step learning and development, not just rapid completion 
+5. avoid jumping to the full remaining phase scope. 
+6. avoid starting a later phase unless explicitly requested.
 
 After coding:
 

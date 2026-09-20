@@ -11,8 +11,9 @@ import (
 )
 
 type App struct {
-	LeadService *service.LeadService
-	store       *store.PostgresStore
+	LeadService              *service.LeadService
+	WorkflowExecutionService *service.WorkflowExecutionService
+	store                    *store.PostgresStore
 }
 
 func New(ctx context.Context, cfg config.Config) (*App, error) {
@@ -23,12 +24,14 @@ func New(ctx context.Context, cfg config.Config) (*App, error) {
 
 	leadRepository := repository.NewLeadRepository(pgStore)
 	workflowRepository := repository.NewWorkflowRepository(pgStore)
+	workflowStepRepository := repository.NewWorkflowStepRepository(pgStore)
 	companyRepository := repository.NewCompanyRepository(pgStore)
 	contactRepository := repository.NewContactRepository(pgStore)
 
 	return &App{
-		LeadService: service.NewLeadService(companyRepository, contactRepository, leadRepository, workflowRepository),
-		store:       pgStore,
+		LeadService:              service.NewLeadService(companyRepository, contactRepository, leadRepository, workflowRepository),
+		WorkflowExecutionService: service.NewWorkflowExecutionService(workflowRepository, workflowStepRepository),
+		store:                    pgStore,
 	}, nil
 }
 
