@@ -46,6 +46,7 @@ func TestLeadAndWorkflowRepositoriesPersistRecords(t *testing.T) {
 	workflowStepRepository := repository.NewWorkflowStepRepository(pgStore)
 	toolExecutionRepository := repository.NewToolExecutionRepository(pgStore)
 	approvalRepository := repository.NewApprovalRepository(pgStore)
+	auditEventRepository := repository.NewAuditEventRepository(pgStore)
 	companyRepository := repository.NewCompanyRepository(pgStore)
 
 	company := domain.Company{
@@ -116,6 +117,18 @@ func TestLeadAndWorkflowRepositoriesPersistRecords(t *testing.T) {
 	createdApproval, err := approvalRepository.Create(ctx, approval)
 	if err != nil {
 		t.Fatalf("failed to create approval: %v", err)
+	}
+
+	auditEvent := domain.AuditEvent{
+		ID:         uuid.NewString(),
+		WorkflowID: createdWorkflow.ID,
+		EventType:  "approval_requested",
+		Actor:      "policy-engine",
+	}
+
+	createdAuditEvent, err := auditEventRepository.Create(ctx, auditEvent)
+	if err != nil {
+		t.Fatalf("failed to create audit event: %v", err)
 	}
 
 	storedLead, err := leadRepository.GetByID(ctx, createdLead.ID)
@@ -206,6 +219,23 @@ func TestLeadAndWorkflowRepositoriesPersistRecords(t *testing.T) {
 
 	if approvals[0].CreatedAt.IsZero() || approvals[0].UpdatedAt.IsZero() {
 		t.Fatal("expected postgres-managed timestamps to be populated for approval")
+	}
+
+	auditEvents, err := auditEventRepository.ListByWorkflowID(ctx, createdWorkflow.ID)
+	if err != nil {
+		t.Fatalf("failed to list audit events by workflow id: %v", err)
+	}
+
+	if len(auditEvents) != 1 {
+		t.Fatalf("expected 1 audit event, got %d", len(auditEvents))
+	}
+
+	if auditEvents[0].ID != createdAuditEvent.ID || auditEvents[0].WorkflowID != createdAuditEvent.WorkflowID || auditEvents[0].EventType != createdAuditEvent.EventType || auditEvents[0].Actor != createdAuditEvent.Actor {
+		t.Fatalf("unexpected audit event payload: %+v", auditEvents[0])
+	}
+
+	if auditEvents[0].CreatedAt.IsZero() || auditEvents[0].UpdatedAt.IsZero() {
+		t.Fatal("expected postgres-managed timestamps to be populated for audit event")
 	}
 }
 

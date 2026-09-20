@@ -1,3 +1,4 @@
+DROP TABLE IF EXISTS audit_evets;
 DROP TABLE IF EXISTS approvals;
 DROP TABLE IF EXISTS tool_executions;
 DROP TABLE IF EXISTS workflow_steps;
