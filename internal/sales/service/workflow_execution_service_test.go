@@ -141,6 +141,78 @@ func TestRetryStepReturnsRunningStepIdempotently(t *testing.T) {
 	}
 }
 
+func TestPauseForApprovalRejectsNonRunningWorkflow(t *testing.T) {
+	t.Parallel()
+
+	service := NewWorkflowExecutionService(&repository.WorkflowRepository{}, &repository.WorkflowStepRepository{})
+	_, err := service.PauseForApproval(context.Background(), domain.Workflow{
+		ID:     "workflow-1",
+		Status: domain.WorkflowStatusPending,
+	}, domain.WorkflowStep{
+		ID:     "step-1",
+		Status: domain.WorkflowStepStatusRunning,
+	})
+	if err == nil {
+		t.Fatalf("expected pause for approval to fail for non-running workflow")
+	}
+}
+
+func TestPauseForApprovalReturnsWaitingApprovalIdempotently(t *testing.T) {
+	t.Parallel()
+
+	service := NewWorkflowExecutionService(&repository.WorkflowRepository{}, &repository.WorkflowStepRepository{})
+	result, err := service.PauseForApproval(context.Background(), domain.Workflow{
+		ID:     "workflow-1",
+		Status: domain.WorkflowStatusWaitingApproval,
+	}, domain.WorkflowStep{
+		ID:     "step-1",
+		Status: domain.WorkflowStepStatusRunning,
+	})
+	if err != nil {
+		t.Fatalf("expected waiting approval to be returned idempotently %v", err)
+	}
+
+	if result.Workflow.Status != domain.WorkflowStatusWaitingApproval {
+		t.Fatalf("expected waiting approval status, got %s", result.Step.Status)
+	}
+}
+
+func TestResumeAfterApprovalRejectsNonWaitingWorkflow(t *testing.T) {
+	t.Parallel()
+
+	service := NewWorkflowExecutionService(&repository.WorkflowRepository{}, &repository.WorkflowStepRepository{})
+	_, err := service.ResumeAfterApproval(context.Background(), domain.Workflow{
+		ID:     "workflow-1",
+		Status: domain.WorkflowStatusPending,
+	}, domain.WorkflowStep{
+		ID:     "step-1",
+		Status: domain.WorkflowStepStatusRunning,
+	})
+	if err == nil {
+		t.Fatalf("expected resume after approval to fail for non-waiting workflow")
+	}
+}
+
+func TestResumeAfterApprovalReturnsRunningIdempotently(t *testing.T) {
+	t.Parallel()
+
+	service := NewWorkflowExecutionService(&repository.WorkflowRepository{}, &repository.WorkflowStepRepository{})
+	result, err := service.ResumeAfterApproval(context.Background(), domain.Workflow{
+		ID:     "workflow-1",
+		Status: domain.WorkflowStatusRunning,
+	}, domain.WorkflowStep{
+		ID:     "step-1",
+		Status: domain.WorkflowStepStatusRunning,
+	})
+	if err != nil {
+		t.Fatalf("expected running workflow to be return idempotently after approval resume: %v", err)
+	}
+
+	if result.Workflow.Status != domain.WorkflowStatusRunning {
+		t.Fatalf("expected running workflow status, got %s", result.Workflow.Status)
+	}
+}
+
 func TestCompleteStepReturnsCompletedStepIdempotently(t *testing.T) {
 	t.Parallel()
 

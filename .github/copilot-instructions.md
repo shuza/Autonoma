@@ -125,6 +125,14 @@ When the user asks to "check the next step", always:
 5. avoid jumping to the full remaining phase scope. 
 6. avoid starting a later phase unless explicitly requested.
 
+Before marking a step or phase item complete during a "check next step" review, always verify all of the following gaps checks:
+
+1. plan vs implementation: the item is implemented in runtime codee, not only mentioned in docs, types, or constants
+2. engine vs repository: the behavior is proven through the real service or engine path, not only by direct repository updates
+3. definition of done vs happy path: the item satisfies the phase definition of done, not just a single successful flow
+4. state existence vs state semantics: if a state exists, the system can enter it, persist it, recover it after restart when relevant, and transition out of it correctly
+5. docs vs truth: checklist boxes and documentation must match the implemented and tested behavior exactly
+
 After coding:
 
 1. Add or update tests.

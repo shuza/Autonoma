@@ -13,6 +13,8 @@ type WorkflowExecutionService struct {
 	workflowSteps *repository.WorkflowStepRepository
 }
 
+const maxStepRetryAttempts = 3
+
 func NewWorkflowExecutionService(workflows *repository.WorkflowRepository, workflowSteps *repository.WorkflowStepRepository) *WorkflowExecutionService {
 	return &WorkflowExecutionService{
 		workflows:     workflows,
@@ -206,6 +208,16 @@ func (s *WorkflowExecutionService) RetryStep(ctx context.Context, workflow domai
 		return ExecutionNextStepResult{}, fmt.Errorf("workflow step status %s cannot be retried", step.Status)
 	}
 
+	steps, err := s.workflowSteps.ListByWorkflowID(ctx, workflow.ID)
+	if err != nil {
+		return ExecutionNextStepResult{}, fmt.Errorf("failed to load workflow steps before retry: %w", err)
+	}
+
+	attempts := countStepAttempts(steps, step.Name)
+	if attempts >= maxStepRetryAttempts {
+		return ExecutionNextStepResult{}, fmt.Errorf("workflow step %s exceeded retry limit of %d attempts", step.Name, maxStepRetryAttempts)
+	}
+
 	if err := workflow.TransitionTo(domain.WorkflowStatusRunning); err != nil {
 		return ExecutionNextStepResult{}, fmt.Errorf("failed to move workflow back to running: %w", err)
 	}
@@ -215,8 +227,83 @@ func (s *WorkflowExecutionService) RetryStep(ctx context.Context, workflow domai
 		return ExecutionNextStepResult{}, fmt.Errorf("failed to persist retried workflow step status: %w", err)
 	}
 
+	retriedStep, err := s.workflowSteps.UpdateStatus(ctx, step.ID, domain.WorkflowStepStatusRunning)
+	if err != nil {
+		return ExecutionNextStepResult{}, fmt.Errorf("failed to persist retried workflow step status: %w", err)
+	}
+
 	return ExecutionNextStepResult{
 		Workflow: retriedWorkflow,
+		Step:     retriedStep,
+	}, nil
+}
+
+func (s *WorkflowExecutionService) PauseForApproval(ctx context.Context, workflow domain.Workflow, step domain.WorkflowStep) (ExecutionNextStepResult, error) {
+	if s == nil || s.workflows == nil || s.workflowSteps == nil {
+		return ExecutionNextStepResult{}, fmt.Errorf("workflow execution service is not configured")
+	}
+
+	if workflow.Status == domain.WorkflowStatusWaitingApproval {
+		return ExecutionNextStepResult{
+			Workflow: workflow,
+			Step:     step,
+		}, nil
+	}
+
+	if workflow.Status != domain.WorkflowStatusRunning {
+		return ExecutionNextStepResult{}, fmt.Errorf("workflow status %s cannot pause for approval", workflow.Status)
+	}
+
+	if step.Status != domain.WorkflowStepStatusRunning {
+		return ExecutionNextStepResult{}, fmt.Errorf("workflow step status %s cannot wait for approval", step.Status)
+	}
+
+	if err := workflow.TransitionTo(domain.WorkflowStatusWaitingApproval); err != nil {
+		return ExecutionNextStepResult{}, fmt.Errorf("failed to move workflow to waiting approval: %w", err)
+	}
+
+	waitingWorkflow, err := s.workflows.UpdateStatus(ctx, workflow.ID, workflow.Status)
+	if err != nil {
+		return ExecutionNextStepResult{}, fmt.Errorf("failed to persist waiting approval workflow status: %w", err)
+	}
+
+	return ExecutionNextStepResult{
+		Workflow: waitingWorkflow,
+		Step:     step,
+	}, nil
+}
+
+func (s *WorkflowExecutionService) ResumeAfterApproval(ctx context.Context, workflow domain.Workflow, step domain.WorkflowStep) (ExecutionNextStepResult, error) {
+	if s == nil || s.workflows == nil || s.workflowSteps == nil {
+		return ExecutionNextStepResult{}, fmt.Errorf("workflow execution service is not configured")
+	}
+
+	if workflow.Status == domain.WorkflowStatusRunning && step.Status == domain.WorkflowStepStatusRunning {
+		return ExecutionNextStepResult{
+			Workflow: workflow,
+			Step:     step,
+		}, nil
+	}
+
+	if workflow.Status != domain.WorkflowStatusWaitingApproval {
+		return ExecutionNextStepResult{}, fmt.Errorf("workflow status %s cannot resume after approval", workflow.Status)
+	}
+
+	if step.Status != domain.WorkflowStepStatusRunning {
+		return ExecutionNextStepResult{}, fmt.Errorf("workflow step status %s cannot resume after approval", step.Status)
+	}
+
+	if err := workflow.TransitionTo(domain.WorkflowStatusRunning); err != nil {
+		return ExecutionNextStepResult{}, fmt.Errorf("failed to move workflow back to running after approval: %w", err)
+	}
+
+	resumedWorkflow, err := s.workflows.UpdateStatus(ctx, workflow.ID, workflow.Status)
+	if err != nil {
+		return ExecutionNextStepResult{}, fmt.Errorf("failed to persist resumed workflow status after approval: %w", err)
+	}
+
+	return ExecutionNextStepResult{
+		Workflow: resumedWorkflow,
 		Step:     step,
 	}, nil
 }
@@ -237,6 +324,16 @@ func hasPendingStep(steps []domain.WorkflowStep) bool {
 		}
 	}
 	return false
+}
+
+func countStepAttempts(steps []domain.WorkflowStep, stepName string) int {
+	attempts := 0
+	for _, existingStep := range steps {
+		if existingStep.Name == stepName {
+			attempts++
+		}
+	}
+	return attempts
 }
 
 type ExecutionNextStepResult struct {

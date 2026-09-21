@@ -84,6 +84,11 @@ Definition of done:
 
 A workflow can stop, the process can restart, and the workflow resumes correctly.
 
+Notes for this phase:
+
+- `WAITING_APPROVAL` is implemented as a persisted engine pause/resume state.
+- retry policy currently means a deterministic retry-attempt limit for a failed step; backoff and scheduling are not part of Phase 2.
+
 ---
 
 ## Phase 3 — AI runtime
