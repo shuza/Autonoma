@@ -3,7 +3,10 @@ PYTEST := cd ai_runtime && python3 -m pytest -c pyproject.toml ../tests/ai_runti
 DOCKER_COMPOSE := docker-compose
 DOCKER_BUILDKIT ?= 0
 
-.PHONY: fmt lint test test-go test-python run-api up down build-image check-compose
+.PHONY: fmt lint test test-go test-python install-python run-api up down build-image check-compose
+
+install-python:
+	cd ai_runtime && python3 -m pip install -e ".[dev]"
 
 fmt:
 	gofmt -w cmd internal

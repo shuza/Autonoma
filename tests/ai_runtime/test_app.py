@@ -1,7 +1,7 @@
 import os
 import subprocess
 import sys
-from autonoma_runtime.app import create_app
+from autonoma_runtime.app import create_app, generate_response
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -12,6 +12,14 @@ def test_create_app_returns_ready_runtime() -> None:
 
     assert app.name == "autonoma-ai-runtime"
     assert app.status == "ready"
+    assert app.provider.name == "mock-provider"
+
+
+def test_generate_response_uses_mock_provider() -> None:
+    response = generate_response(" hello runtime")
+
+    assert response.provider_name == "mock-provider"
+    assert response.content == "mock-response:hello runtime"
 
 
 def test_module_entrypoint_reports_ready_status() -> None:
@@ -27,4 +35,4 @@ def test_module_entrypoint_reports_ready_status() -> None:
         env=env
     )
 
-    assert result.stdout.strip() == "autonoma-ai-runtime:ready"
+    assert result.stdout.strip() == "autonoma-ai-runtime:ready:mock-provider:mock-response:runtime-healthcheck"

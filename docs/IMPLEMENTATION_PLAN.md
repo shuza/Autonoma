@@ -101,7 +101,7 @@ Implement:
 - [ ] structured output
 - [ ] validation
 - [ ] token/cost tracking
-- [ ] mock provider
+- [x] mock provider
 - [ ] provider integration
 - [ ] LangGraph where stateful orchestration is useful
 

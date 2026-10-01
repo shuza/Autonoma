@@ -43,6 +43,11 @@ jobs:
       - name: Run Go Lint
         run: golangci-lint run
 
+      - name: Install python dependencies
+        run: |
+          cd ai_runtime
+          python -m pip install -e ".[dev]"
+
       - name: Run Python tests
         run: |
           cd ai_runtime
