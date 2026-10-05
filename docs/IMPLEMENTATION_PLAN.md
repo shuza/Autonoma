@@ -111,10 +111,10 @@ Notes for this phase:
 
 - Structured output and validation are implemented through the runtime generation
   path using the mock provider and the explicitly supported schema subset
-  documented in `docs/ARCHETRCUTRE.md`
+  documented in `docs/ARCHITECTURE.md`
 - Invalid or unsupported schemas fail before generation. Output validation
-  rejects non-standard/non-finite numbers and covers nested failure path.
-- Real-provider integration, token/cost tracking, and statful orchestration
+  rejects non-standard/non-finite numbers and covers nested failure paths.
+- Real-provider integration, token/cost tracking, and stateful orchestration
   remain separate, incomplete slices.
 
 ---

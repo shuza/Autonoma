@@ -27,13 +27,13 @@ def generate_response(prompt: str) -> ProviderResponse:
 
 
 def generate_structured_response(
-        promt: str,
+        prompt: str,
         response_schema: Mapping[str, Any],
         *,
         provider: LLMProvider | None = None
 ) -> StructuredOutputResult:
     app = create_app(provider)
-    return StructuredOutputGenerator(app.provider).generate(promt, response_schema)
+    return StructuredOutputGenerator(app.provider).generate(prompt, response_schema)
 
 
 def main() -> None:

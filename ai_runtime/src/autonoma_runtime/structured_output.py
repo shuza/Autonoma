@@ -72,7 +72,7 @@ def _validate_schema(schema: Any, *, path: str) -> None:
     for keyword in schema:
         if keyword not in supported:
             raise StructuredOutputSchemaError(
-                f"{path} usus unsupported schema keyword {keyword!r}"
+                f"{path} uses unsupported schema keyword {keyword!r}"
             )
 
     if "type" in schema and schema["type"] not in (
@@ -99,7 +99,7 @@ def _validate_schema(schema: Any, *, path: str) -> None:
             raise StructuredOutputSchemaError(f"{path}.properties must be an object")
         for name, property_schema in properties.items():
             if not isinstance(name, str):
-                raise StructuredOutputSchemaError(f"{path}.properties must be string")
+                raise StructuredOutputSchemaError(f"{path}.properties keys must be strings")
             _validate_schema(property_schema, path=f"{path}.properties.{name}")
 
     if "required" in schema:
@@ -114,12 +114,12 @@ def _validate_schema(schema: Any, *, path: str) -> None:
     if "additionalProperties" in schema and not isinstance(
         schema["additionalProperties"], bool
     ):
-            raise StructuredOutputSchemaError(f"{path}.additionalProperties must be boolean")
+            raise StructuredOutputSchemaError(f"{path}.additionalProperties must be a boolean")
 
     if "items" in schema:
         _validate_schema(schema["items"], path=f"{path}.items")
 
-    for keyword in ("minItems", "maxLength"):
+    for keyword in ("minItems", "minLength"):
         if keyword in schema:
             value = schema[keyword]
             if type(value) is not int or value < 0:
@@ -129,7 +129,7 @@ def _validate_schema(schema: Any, *, path: str) -> None:
 
     for keyword in ("minimum", "maximum"):
         if keyword in schema and not _is_number(schema[keyword]):
-            raise StructuredOutputSchemaError(f"{path}.{keyword} must be a number")
+            raise StructuredOutputSchemaError(f"{path}.{keyword} must be a finite number")
     if (
         "minimum" in schema
         and "maximum" in schema
@@ -167,7 +167,7 @@ def _json_equal(left: Any, right: Any) -> bool:
         )
     if isinstance(left, list):
         return len(left) == len(right) and all(
-            _json_equal(a, b) for key, value in left.items()
+            _json_equal(a, b) for a, b in zip(left, right)
         )
     return left == right
 
@@ -178,9 +178,9 @@ def _validate(value: Any, schema: Mapping[str, Any], *, path: str) -> None:
         _validate_type(value, expected_type, path=path)
 
     if "enum" in schema and not any(
-        _json_equal(value, allowed) for allowed in chema["enum"]
+        _json_equal(value, allowed) for allowed in schema["enum"]
     ):
-        raise StructuredOutputError(f"{path} must be on of the allowed values")
+        raise StructuredOutputError(f"{path} must be one of the allowed values")
 
     if isinstance(value, dict):
         _validate_object(value, schema, path)
