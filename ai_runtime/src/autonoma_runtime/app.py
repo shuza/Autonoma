@@ -1,9 +1,10 @@
 """Minimal AI runtime entrypoint for Phase 0."""
 
 from dataclasses import dataclass
-from typing import Final
+from typing import Any, Final, Mapping
 
 from .provider import LLMProvider, MockProvider, ProviderRequest, ProviderResponse
+from .structured_output import StructuredOutputError, StructuredOutputResult, StructuredOutputGenerator
 
 READY_STATUS: Final[str] = "ready"
 RUNTIME_NAME: Final[str] = "autonoma-ai-runtime"
@@ -16,13 +17,23 @@ class RuntimeApp:
     status: str = READY_STATUS
 
 
-def create_app() -> RuntimeApp:
-    return RuntimeApp(provider=MockProvider())
+def create_app(provider: LLMProvider | None = None) -> RuntimeApp:
+    return RuntimeApp(provider=provider or MockProvider())
 
 
 def generate_response(prompt: str) -> ProviderResponse:
     app = create_app()
     return app.provider.generate(ProviderRequest(prompt=prompt))
+
+
+def generate_structured_response(
+        promt: str,
+        response_schema: Mapping[str, Any],
+        *,
+        provider: LLMProvider | None = None
+) -> StructuredOutputResult:
+    app = create_app(provider)
+    return StructuredOutputGenerator(app.provider).generate(promt, response_schema)
 
 
 def main() -> None:

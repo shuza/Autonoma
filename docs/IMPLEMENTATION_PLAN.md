@@ -97,9 +97,9 @@ Create the Python AI runtime.
 
 Implement:
 
-- [ ] LLM provider abstraction
-- [ ] structured output
-- [ ] validation
+- [x] LLM provider abstraction
+- [x] structured output
+- [x] validation
 - [ ] token/cost tracking
 - [x] mock provider
 - [ ] provider integration
