@@ -107,6 +107,16 @@ Implement:
 
 Do not tightly couple domain models to LangChain/LangGraph types.
 
+Notes for this phase:
+
+- Structured output and validation are implemented through the runtime generation
+  path using the mock provider and the explicitly supported schema subset
+  documented in `docs/ARCHETRCUTRE.md`
+- Invalid or unsupported schemas fail before generation. Output validation
+  rejects non-standard/non-finite numbers and covers nested failure path.
+- Real-provider integration, token/cost tracking, and statful orchestration
+  remain separate, incomplete slices.
+
 ---
 
 ## Phase 4 — Research capability
