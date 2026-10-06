@@ -100,7 +100,7 @@ Implement:
 - [x] LLM provider abstraction
 - [x] structured output
 - [x] validation
-- [ ] token/cost tracking
+- [x] token/cost tracking
 - [x] mock provider
 - [ ] provider integration
 - [ ] LangGraph where stateful orchestration is useful
@@ -111,9 +111,13 @@ Notes for this phase:
 
 - Structured output and validation are implemented through the runtime generation
   path using the mock provider and the explicitly supported schema subset
-  documented in `docs/ARCHITECTURE.md`
+  documented in `docs/ARCHITECTURE.md`.
 - Invalid or unsupported schemas fail before generation. Output validation
   rejects non-standard/non-finite numbers and covers nested failure paths.
+- Per-call usage and USD cost are implemented with mock token fixtures and
+  configured decimal pricing. Accounting services structured-output failures;
+  missing usage/pricing remains unknow, not a reported zero. No persistent
+- ledger or aggregate mertics are implemented in this slice.
 - Real-provider integration, token/cost tracking, and stateful orchestration
   remain separate, incomplete slices.
 

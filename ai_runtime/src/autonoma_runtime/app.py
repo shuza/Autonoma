@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from typing import Any, Final, Mapping
 
 from .provider import LLMProvider, MockProvider, ProviderRequest, ProviderResponse
-from .structured_output import StructuredOutputError, StructuredOutputResult, StructuredOutputGenerator
+from .structured_output import StructuredOutputResult, StructuredOutputGenerator
 
 READY_STATUS: Final[str] = "ready"
 RUNTIME_NAME: Final[str] = "autonoma-ai-runtime"
@@ -21,7 +21,9 @@ def create_app(provider: LLMProvider | None = None) -> RuntimeApp:
     return RuntimeApp(provider=provider or MockProvider())
 
 
-def generate_response(prompt: str) -> ProviderResponse:
+def generate_response(
+        prompt: str, *, provider: LLMProvider | None = None
+) -> ProviderResponse:
     app = create_app()
     return app.provider.generate(ProviderRequest(prompt=prompt))
 

@@ -11,6 +11,12 @@ from .provider import LLMProvider, ProviderRequest, ProviderResponse
 class StructuredOutputError(Exception):
     """Raised when provider output is not valid for its requested schema."""
 
+    def __init__(
+            self, message: str, *, provider_response: ProviderResponse | None = None
+    ) -> None:
+        super().__init__(message)
+        self.provider_response = provider_response
+
 
 class StructuredOutputSchemaError(ValueError):
     """Raised before generation when a schema is invalid or unsupported."""
@@ -43,10 +49,15 @@ class StructuredOutputGenerator:
                 parse_constant=_reject_constant,
                 parse_float=_parse_finite_float,
             )
+            _validate(data, response_schema, path="$")
         except json.JSONDecodeError as error:
-            raise StructuredOutputError("provider response is not valid JSON") from error
+            raise StructuredOutputError(
+                "provider response is not valid JSON", provider_response=response
+            ) from error
+        except StructuredOutputError as error:
+            error.provider_response = response
+            raise
 
-        _validate(data, response_schema, path="$")
         return StructuredOutputResult(data=data, provider_response=response)
 
 
