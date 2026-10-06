@@ -115,9 +115,12 @@ Notes for this phase:
 - Invalid or unsupported schemas fail before generation. Output validation
   rejects non-standard/non-finite numbers and covers nested failure paths.
 - Per-call usage and USD cost are implemented with mock token fixtures and
-  configured decimal pricing. Accounting services structured-output failures;
-  missing usage/pricing remains unknow, not a reported zero. No persistent
-- ledger or aggregate mertics are implemented in this slice.
+  configured decimal pricing. Accounting survives structured-output failures;
+  missing usage/pricing remains unknown, not a reported zero. No persistent
+  ledger or aggregate metrics are implemented in this slice.
+- Usage and pricing snapshots are immutable so they cannot be changed after
+  validation or alter accounting on previously returned responses.
+
 - Real-provider integration, token/cost tracking, and stateful orchestration
   remain separate, incomplete slices.
 

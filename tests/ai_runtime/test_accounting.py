@@ -6,8 +6,9 @@ from autonoma_runtime.structured_output import (
     StructuredOutputError,
     StructuredOutputSchemaError,
 )
+from dataclasses import FrozenInstanceError
 from decimal import Decimal, localcontext
-from typing import Any, cast
+from typing import Any
 
 PRICING = ModelPricing(Decimal("1.25"), Decimal("5"))
 
@@ -121,11 +122,27 @@ def test_output_failures_retain_usage_and_cost(content: str) -> None:
     with pytest.raises(StructuredOutputError) as output:
         generate_structured_response("probe", {"type": "boolean"}, provider=provider)
 
-    response = caught.value.provider_response
+    response = output.value.provider_response
     assert response is not None
     assert response.usage == TokenUsage(1000, 2000)
     assert response.cost_usd == Decimal("0.01125")
-    assert content not in str(caught.value)
+    assert content not in str(output.value)
+
+
+def test_accounting_snapshots_cannot_be_mutated() -> None:
+    usage = TokenUsage(1000, 2000)
+    pricing = ModelPricing(Decimal("1.25"), Decimal("5"))
+    response = generate_response(
+        "probe", provider=MockProvider(usage={"probe": usage}, pricing=pricing)
+    )
+
+    with pytest.raises(FrozenInstanceError):
+        setattr(usage, "input_tokens", -1)
+    with pytest.raises(FrozenInstanceError):
+        setattr(usage, "input_usd_per_million_tokens", Decimal("-1"))
+
+    assert response.usage == TokenUsage(1000, 2000)
+    assert response.cost_usd == Decimal("0.01125")
 
 
 def test_schema_failure_still_precedes_accounted_provider_call() -> None:

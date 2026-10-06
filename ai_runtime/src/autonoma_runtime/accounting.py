@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from decimal import Decimal, localcontext
 
 
-@dataclass
+@dataclass(frozen=True)
 class TokenUsage:
     input_tokens: int
     output_tokens: int
@@ -20,7 +20,7 @@ class TokenUsage:
         return self.input_tokens + self.output_tokens
 
 
-@dataclass
+@dataclass(frozen=True)
 class ModelPricing:
     input_usd_per_million_tokens: Decimal = Decimal("0")
     output_usd_per_million_tokens: Decimal = Decimal("0")
@@ -29,7 +29,7 @@ class ModelPricing:
         for name in ("input_usd_per_million_tokens", "output_usd_per_million_tokens"):
             value = getattr(self, name)
             if not isinstance(value, Decimal) or not value.is_finite() or value < 0:
-                raise ValueError(f"{name} must be a non-negative Decimal")
+                raise ValueError(f"{name} must be a finite non-negative Decimal")
 
     def calculate_cost(self, usage: TokenUsage) -> Decimal:
         input_count = Decimal(usage.input_tokens)

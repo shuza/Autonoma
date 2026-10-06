@@ -24,7 +24,7 @@ def create_app(provider: LLMProvider | None = None) -> RuntimeApp:
 def generate_response(
         prompt: str, *, provider: LLMProvider | None = None
 ) -> ProviderResponse:
-    app = create_app()
+    app = create_app(provider)
     return app.provider.generate(ProviderRequest(prompt=prompt))
 
 
