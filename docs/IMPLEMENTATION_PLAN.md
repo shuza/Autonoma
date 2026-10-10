@@ -102,7 +102,7 @@ Implement:
 - [x] validation
 - [x] token/cost tracking
 - [x] mock provider
-- [ ] provider integration
+- [x] provider integration
 - [ ] LangGraph where stateful orchestration is useful
 
 Do not tightly couple domain models to LangChain/LangGraph types.
@@ -120,9 +120,12 @@ Notes for this phase:
   ledger or aggregate metrics are implemented in this slice.
 - Usage and pricing snapshots are immutable so they cannot be changed after
   validation or alter accounting on previously returned responses.
-
-- Real-provider integration, token/cost tracking, and stateful orchestration
-  remain separate, incomplete slices.
+- A single non-streaming OpenAI-compatible Chat Completions adapter is
+  implemented through the real runtime path with explicit base URL, model,
+  timeout, API key, and pricing configuration. It maps standard usage into
+  Autonoma accounting and preserves unknown usage when the provider omits it.
+- Provider integration currently covers one request/response path only. It does
+  not yet include environment-based provider selection or stateful orchestration.
 
 ---
 
