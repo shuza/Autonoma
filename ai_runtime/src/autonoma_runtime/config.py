@@ -48,16 +48,16 @@ def create_provider(environ: Mapping[str, str] | None = None) -> LLMProvider:
 
 def _load_pricing(settings: Mapping[str, str]) -> ModelPricing | None:
     names = (
-        "AUTONOMA_LLM_INPUT_USD_PER_MILLION_TOKEN",
-        "AUTONOMA_LLM_OUTPUT_USD_PER_MILLION_TOKEN",
+        "AUTONOMA_LLM_INPUT_USD_PER_MILLION_TOKENS",
+        "AUTONOMA_LLM_OUTPUT_USD_PER_MILLION_TOKENS",
     )
     if all(name not in settings for name in names):
         return None
     if any(name not in settings for name in names):
-        raise ProviderConfigurationError("bot input and output pricing are required")
+        raise ProviderConfigurationError("both input and output pricing are required")
     try:
         return ModelPricing(*(Decimal(settings[name]) for name in names))
     except (InvalidOperation, ValueError):
         raise ProviderConfigurationError(
             "LLM pricing must contain finite non-negative decimal rates"
-        )
+        ) from None

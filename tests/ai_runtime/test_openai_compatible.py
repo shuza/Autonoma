@@ -4,6 +4,7 @@ import threading
 import time
 from autonoma_runtime.accounting import ModelPricing, TokenUsage
 from autonoma_runtime.app import generate_response, generate_structured_response
+from autonoma_runtime.config import ProviderConfigurationError
 from autonoma_runtime.openai_compatible import (
     OpenAICompatibleProvider,
     ProviderError,
@@ -106,8 +107,8 @@ def test_environment_selected_provider_through_generation(endpoint, monkeypatch,
     monkeypatch.setenv("AUTONOMA_LLM_MODEL", "configure-model")
     monkeypatch.setenv("AUTONOMA_LLM_API_KEY", "test-key")
     monkeypatch.setenv("AUTONOMA_LLM_TIMEOUT_SECONDS", "1")
-    monkeypatch.setenv("AUTONOMA_LLM_INPUT_USD_PER_MILLION_TOKEN", "1")
-    monkeypatch.setenv("AUTONOMA_LLM_OUTPUT_USD_PER_MILLION_TOKEN", "2")
+    monkeypatch.setenv("AUTONOMA_LLM_INPUT_USD_PER_MILLION_TOKENS", "1")
+    monkeypatch.setenv("AUTONOMA_LLM_OUTPUT_USD_PER_MILLION_TOKENS", "2")
     if structured:
         result = generate_structured_response("probe", {"type": "boolean"})
         assert result.data is True
@@ -117,6 +118,33 @@ def test_environment_selected_provider_through_generation(endpoint, monkeypatch,
     assert response.usage == TokenUsage(10, 20)
     assert response.cost_usd == Decimal("0.00005")
     assert state["requests"][0][2]["model"] == "configure-model"
+
+
+@pytest.mark.parametrize("structured", [False, True])
+@pytest.mark.parametrize("side", ["INPUT", "OUTPUT"])
+@pytest.mark.parametrize("rate", [None, "", "invalid", "-1", "NaN", "Infinity"])
+def test_invalid_or_incomplete_pricing_prevents_requests(
+        endpoint, monkeypatch, structured, side, rate
+):
+    url, state = endpoint
+    monkeypatch.setenv("AUTONOMA_LLM_PROVIDER", "openai_compatible")
+    monkeypatch.setenv("AUTONOMA_LLM_BASE_URL", url)
+    monkeypatch.setenv("AUTONOMA_LLM_MODEL", "configured-model")
+    monkeypatch.setenv("AUTONOMA_LLM_INPUT_USD_PER_MILLION_TOKENS", "1")
+    monkeypatch.setenv("AUTONOMA_LLM_OUTPUT_USD_PER_MILLION_TOKENS", "2")
+    name = f"AUTONOMA_LLM_{side}_USD_PER_MILLION_TOKENS"
+    if rate is None:
+        monkeypatch.delenv(name)
+    else:
+        monkeypatch.setenv(name, rate)
+
+    with pytest.raises(ProviderConfigurationError, match="pricing"):
+        if structured:
+            generate_structured_response("probe", {"type": "boolean"})
+        else:
+            generate_response("probe")
+
+    assert state["requests"] == []
 
 
 def test_environment_selected_failure_keeps_accounting(endpoint, monkeypatch):

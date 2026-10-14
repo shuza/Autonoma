@@ -39,8 +39,8 @@ def test_local_provider_without_credentials_or_pricing() -> None:
         {"AUTONOMA_LLM_BASE_URL": "https://user:secret@example.com/v1"},
         {"AUTONOMA_LLM_API_KEY": ""},
         {"AUTONOMA_LLM_API_KEY": "secret\nheader"},
-        {"AUTONOMA_LLM_INPUT_USD_PER_MILLION_TOKEN": "1"},
-        {"AUTONOMA_LLM_OUTPUT_USD_PER_MILLION_TOKEN": "1"},
+        {"AUTONOMA_LLM_INPUT_USD_PER_MILLION_TOKENS": "1"},
+        {"AUTONOMA_LLM_OUTPUT_USD_PER_MILLION_TOKENS": "1"},
     ],
 )
 def test_invalid_configuration_is_explicit(changes) -> None:
@@ -61,9 +61,9 @@ def test_missing_required_configuration(field: str) -> None:
 @pytest.mark.parametrize("side", ["INPUT", "OUTPUT"])
 def test_invalid_pricing(rate: str, side: str) -> None:
     settings = SETTINGS | {
-        "AUTONOMA_LLM_INPUT_USD_PER_MILLION_TOKEN": "0",
-        "AUTONOMA_LLM_OUTPUT_USD_PER_MILLION_TOKEN": "0",
-        f"AUTONOMA_LLM_{side}_USD_PER_MILLION_TOKEN": rate,
+        "AUTONOMA_LLM_INPUT_USD_PER_MILLION_TOKENS": "0",
+        "AUTONOMA_LLM_OUTPUT_USD_PER_MILLION_TOKENS": "0",
+        f"AUTONOMA_LLM_{side}_USD_PER_MILLION_TOKENS": rate,
     }
     with pytest.raises(ProviderConfigurationError, match="pricing"):
         create_provider(settings)

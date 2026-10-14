@@ -394,11 +394,11 @@ Create a reproducible demo:
 
 Current phase:
 
-**Phase 2 — Workflow engine**
+**Phase 3 — AI runtime**
 
 Current task:
 
-**Implement the next smallest useful Phase 2 vertical slice.**
+**Canonical pricing configuration repaired; stateful orchestration remains deferred until a concrete workflow needs it.**
 
 Do not implement future phases until the current phase is complete.
 
