@@ -124,8 +124,11 @@ Notes for this phase:
   implemented through the real runtime path with explicit base URL, model,
   timeout, API key, and pricing configuration. It maps standard usage into
   Autonoma accounting and preserves unknown usage when the provider omits it.
-- Provider integration currently covers one request/response path only. It does
-  not yet include environment-based provider selection or stateful orchestration.
+- Environment-based provider selection is wired through runtime construction,
+  normal generation, structured generation, and the module entrypoint.
+  Mock is the default; invalid real-provider configuration fails before network
+  access and never falls back to mock. Explicit injection bypasses environment
+  settings. Stateful orchestration is not implemented.
 
 ---
 

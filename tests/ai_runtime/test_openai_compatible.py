@@ -98,6 +98,41 @@ def test_structured_generation_schema_and_accounting(endpoint) -> None:
     assert payload["response_format"]["type"] == "json_schema"
 
 
+@pytest.mark.parametrize("structured", [False, True])
+def test_environment_selected_provider_through_generation(endpoint, monkeypatch, structured):
+    url, state = endpoint
+    monkeypatch.setenv("AUTONOMA_LLA_PROVIDER", "openai_compatible")
+    monkeypatch.setenv("AUTONOMA_LLM_BASE_URL", url)
+    monkeypatch.setenv("AUTONOMA_LLM_MODEL", "configure-model")
+    monkeypatch.setenv("AUTONOMA_LLM_API_KEY", "test-key")
+    monkeypatch.setenv("AUTONOMA_LLM_TIMEOUT_SECONDS", "1")
+    monkeypatch.setenv("AUTONOMA_LLM_INPUT_USD_PER_MILLION_TOKEN", "1")
+    monkeypatch.setenv("AUTONOMA_LLM_OUTPUT_USD_PER_MILLION_TOKEN", "2")
+    if structured:
+        result = generate_structured_response("probe", {"type": "boolean"})
+        assert result.data is True
+        response = result.provider_response
+    else:
+        response = generate_response("probe")
+    assert response.usage == TokenUsage(10, 20)
+    assert response.cost_usd == Decimal("0.00005")
+    assert state["requests"][0][2]["model"] == "configure-model"
+
+
+def test_environment_selected_failure_keeps_accounting(endpoint, monkeypatch):
+    url, state = endpoint
+    monkeypatch.setenv("AUTONOMA_LLA_PROVIDER", "openai_compatible")
+    monkeypatch.setenv("AUTONOMA_LLM_BASE_URL", url)
+    monkeypatch.setenv("AUTONOMA_LLM_MODEL", "configure-model")
+    state["body"]["choices"][0]["message"]["content"] = "invalid JSON"
+    with pytest.raises(StructuredOutputError) as caught:
+        generate_structured_response("probe", {"type": "boolean"})
+    response = caught.value.provider_response
+    assert response is not None
+    assert response.usage == TokenUsage(10, 20)
+    assert response.cost_usd is None
+
+
 @pytest.mark.parametrize("usage", [None, "missing"])
 def test_missing_usage_is_unknow(endpoint, usage) -> None:
     url, state = endpoint

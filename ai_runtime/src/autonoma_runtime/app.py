@@ -3,7 +3,8 @@
 from dataclasses import dataclass
 from typing import Any, Final, Mapping
 
-from .provider import LLMProvider, MockProvider, ProviderRequest, ProviderResponse
+from .config import create_provider
+from .provider import LLMProvider, ProviderRequest, ProviderResponse
 from .structured_output import StructuredOutputResult, StructuredOutputGenerator
 
 READY_STATUS: Final[str] = "ready"
@@ -18,7 +19,7 @@ class RuntimeApp:
 
 
 def create_app(provider: LLMProvider | None = None) -> RuntimeApp:
-    return RuntimeApp(provider=provider or MockProvider())
+    return RuntimeApp(provider=create_provider() if provider is None else provider)
 
 
 def generate_response(
