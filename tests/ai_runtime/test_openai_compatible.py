@@ -101,7 +101,7 @@ def test_structured_generation_schema_and_accounting(endpoint) -> None:
 @pytest.mark.parametrize("structured", [False, True])
 def test_environment_selected_provider_through_generation(endpoint, monkeypatch, structured):
     url, state = endpoint
-    monkeypatch.setenv("AUTONOMA_LLA_PROVIDER", "openai_compatible")
+    monkeypatch.setenv("AUTONOMA_LLM_PROVIDER", "openai_compatible")
     monkeypatch.setenv("AUTONOMA_LLM_BASE_URL", url)
     monkeypatch.setenv("AUTONOMA_LLM_MODEL", "configure-model")
     monkeypatch.setenv("AUTONOMA_LLM_API_KEY", "test-key")
@@ -121,7 +121,7 @@ def test_environment_selected_provider_through_generation(endpoint, monkeypatch,
 
 def test_environment_selected_failure_keeps_accounting(endpoint, monkeypatch):
     url, state = endpoint
-    monkeypatch.setenv("AUTONOMA_LLA_PROVIDER", "openai_compatible")
+    monkeypatch.setenv("AUTONOMA_LLM_PROVIDER", "openai_compatible")
     monkeypatch.setenv("AUTONOMA_LLM_BASE_URL", url)
     monkeypatch.setenv("AUTONOMA_LLM_MODEL", "configure-model")
     state["body"]["choices"][0]["message"]["content"] = "invalid JSON"

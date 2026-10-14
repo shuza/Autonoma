@@ -7,7 +7,7 @@ from autonoma_runtime.provider import MockProvider
 
 
 SETTINGS = {
-    "AUTONOMA_LLA_PROVIDER": "openai_compatible",
+    "AUTONOMA_LLM_PROVIDER": "openai_compatible",
     "AUTONOMA_LLM_BASE_URL": "http://localhost:11434/v1",
     "AUTONOMA_LLM_MODEL": "local-model",
 }
@@ -15,7 +15,7 @@ SETTINGS = {
 
 def test_default_and_explicit_mock() -> None:
     assert isinstance(create_provider({}), MockProvider)
-    assert isinstance(create_provider({"AUTONOMA_LLA_PROVIDER": "mock"}), MockProvider)
+    assert isinstance(create_provider({"AUTONOMA_LLM_PROVIDER": "mock"}), MockProvider)
 
 
 def test_local_provider_without_credentials_or_pricing() -> None:
@@ -25,8 +25,8 @@ def test_local_provider_without_credentials_or_pricing() -> None:
 @pytest.mark.parametrize(
     "changes",
     [
-        {"AUTONOMA_LLA_PROVIDER": ""},
-        {"AUTONOMA_LLA_PROVIDER": "unknown"},
+        {"AUTONOMA_LLM_PROVIDER": ""},
+        {"AUTONOMA_LLM_PROVIDER": "unknown"},
         {"AUTONOMA_LLM_BASE_URL": ""},
         {"AUTONOMA_LLM_MODEL": " "},
         {"AUTONOMA_LLM_TIMEOUT_SECONDS": ""},
@@ -74,12 +74,12 @@ def test_injected_provider_bypass_environment_even_when_falsy(monkeypatch) -> No
         def __bool__(self) -> bool:
             return False
 
-    monkeypatch.setenv("AUTONOMA_LLA_PROVIDER", "invalid")
+    monkeypatch.setenv("AUTONOMA_LLM_PROVIDER", "invalid")
     provider = FalsyMock()
     assert create_app(provider).provider is provider
 
 
 def test_invalid_environment_fails_during_app_construction(monkeypatch) -> None:
-    monkeypatch.setenv("AUTONOMA_LLA_PROVIDER", "openai_compatible")
+    monkeypatch.setenv("AUTONOMA_LLM_PROVIDER", "openai_compatible")
     with pytest.raises(ProviderConfigurationError, match="required"):
         create_app()

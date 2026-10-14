@@ -15,11 +15,11 @@ class ProviderConfigurationError(ValueError):
 
 def create_provider(environ: Mapping[str, str] | None = None) -> LLMProvider:
     settings = os.environ if environ is None else environ
-    provider_name = settings.get("AUTONOMA_LLA_PROVIDER", "mock")
+    provider_name = settings.get("AUTONOMA_LLM_PROVIDER", "mock")
     if provider_name == "mock":
         return MockProvider()
     if provider_name != "openai_compatible":
-        raise ProviderConfigurationError("AUTONOMA_LLA_PROVIDER is unsupported")
+        raise ProviderConfigurationError("AUTONOMA_LLM_PROVIDER is unsupported")
 
     for name in ("AUTONOMA_LLM_BASE_URL", "AUTONOMA_LLM_MODEL"):
         if not settings.get(name, "").strip():
@@ -35,8 +35,8 @@ def create_provider(environ: Mapping[str, str] | None = None) -> LLMProvider:
     pricing = _load_pricing(settings)
     try:
         return OpenAICompatibleProvider(
-            base_url=settings.get("AUTONOMA_LLM_BASE_URL"),
-            model=settings.get("AUTONOMA_LLM_MODEL"),
+            base_url=settings["AUTONOMA_LLM_BASE_URL"],
+            model=settings["AUTONOMA_LLM_MODEL"],
             timeout_seconds=timeout,
             api_key=settings.get("AUTONOMA_LLM_API_KEY"),
             pricing=pricing,

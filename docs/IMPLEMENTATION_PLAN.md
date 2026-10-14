@@ -129,6 +129,9 @@ Notes for this phase:
   Mock is the default; invalid real-provider configuration fails before network
   access and never falls back to mock. Explicit injection bypasses environment
   settings. Stateful orchestration is not implemented.
+- Configuration uses the documented `AUTONOMA_LLM_PROVIDER` and paired
+  `AUTONOMA_LLM_*_USD_PER_MILLION_TOKENS` names consistently through runtime
+  generation and its failure paths.
 
 ---
 
