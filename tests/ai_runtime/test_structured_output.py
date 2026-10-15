@@ -1,5 +1,6 @@
 import pytest
 import re
+from autonoma_runtime.accounting import ModelPricing, TokenUsage
 from autonoma_runtime.app import generate_structured_response
 from autonoma_runtime.provider import MockProvider, ProviderRequest, ProviderResponse
 from autonoma_runtime.structured_output import (
@@ -54,7 +55,7 @@ def test_generate_structured_response_validation_mock_provider_output() -> None:
         ),
         (
                 '{"qualified": true, "reason": "Good fit", "score": 50, "action": "send"}',
-                "$ contains unexpected properties: action",
+                "$ contains unexpected properties",
         ),
     ],
 )
@@ -240,7 +241,7 @@ def test_accepts_nested_objects_and_arrays() -> None:
         ),
         (
                 '{"leads": [{"qualified": true, "reason": "Fit", "score": 1, "extra": 1}]}',
-                "$.leads[0] contains unexpected properties: extra",
+                "$.leads[0] contains unexpected properties",
         ),
     ],
 )
@@ -258,6 +259,50 @@ def test_provider_failure_is_not_hidden() -> None:
 
     with pytest.raises(TimeoutError, match="provider timed out"):
         generate_structured_response("probe", {}, provider=TimeoutProvider())
+
+
+@pytest.mark.parametrize(
+    "content", ['{"sensitive-key": 1}', "[" * 2000 + "]" * 2000],
+    ids=["untrusted-property", "deeply-nested-json"],
+)
+def test_output_errors_are_sanitized_and_keep_received_response(content: str) -> None:
+    with pytest.raises(StructuredOutputError) as caught:
+        generate_structured_response(
+            "probe", {"type": "object", "additionalProperties": False},
+            provider=MockProvider({"probe": content})
+        )
+    assert caught.value.provider_response.content == content
+    assert "sensitive-key" not in str(caught.value)
+
+
+@pytest.mark.parametrize("failure", [ValueError, RecursionError])
+def test_parser_limits_keep_accounting_and_sanitize_errors(monkeypatch, failure):
+    def reject_json(*args, **kwargs):
+        raise failure("sensitive-parser-error")
+
+    monkeypatch.setattr("autonoma_runtime.structured_output.json.loads", reject_json)
+    with pytest.raises(StructuredOutputError) as caught:
+        generate_structured_response(
+            "probe", {},
+            provider=MockProvider(
+                {"probe": "true"}, usage={"probe": TokenUsage(10, 20)},
+                pricing=ModelPricing(),
+            ),
+        )
+    assert caught.value.provider_response.content == "true"
+    assert caught.value.provider_response.usage == TokenUsage(10, 20)
+    assert caught.value.provider_response.cost_usd == 0
+    assert str(caught.value) == "provider response is not valid JSON"
+    assert caught.value.__suppress_context__
+
+
+def test_cyclic_schema_fails_before_generation() -> None:
+    schema = {}
+    schema["items"] = schema
+    provider = RecordingProvider()
+    with pytest.raises(StructuredOutputSchemaError, match="nesting"):
+        generate_structured_response("probe", schema, provider=provider)
+    assert provider.requests == []
 
 
 def test_structured_generation_accepts_prompt_keyword() -> None:

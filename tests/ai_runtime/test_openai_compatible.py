@@ -12,6 +12,7 @@ from autonoma_runtime.openai_compatible import (
     ProviderResponseError,
     ProviderTimeoutError,
 )
+from autonoma_runtime.provider import ProviderResponseError as RuntimeResponseError
 from autonoma_runtime.structured_output import StructuredOutputError
 from decimal import Decimal
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -147,18 +148,122 @@ def test_invalid_or_incomplete_pricing_prevents_requests(
     assert state["requests"] == []
 
 
-def test_environment_selected_failure_keeps_accounting(endpoint, monkeypatch):
+@pytest.mark.parametrize("rejected_completion", [False, True])
+def test_environment_selected_failure_keeps_accounting(
+        endpoint, monkeypatch, rejected_completion
+):
     url, state = endpoint
     monkeypatch.setenv("AUTONOMA_LLM_PROVIDER", "openai_compatible")
     monkeypatch.setenv("AUTONOMA_LLM_BASE_URL", url)
     monkeypatch.setenv("AUTONOMA_LLM_MODEL", "configure-model")
+    monkeypatch.setenv("AUTONOMA_LLM_INPUT_USD_PER_MILLION_TOKENS", "1")
+    monkeypatch.setenv("AUTONOMA_LLM_OUTPUT_USD_PER_MILLION_TOKENS", "2")
     state["body"]["choices"][0]["message"]["content"] = "invalid JSON"
+    if rejected_completion:
+        state["body"]["choices"][0]["finish_reason"] = "length"
+        with pytest.raises(RuntimeResponseError) as caught:
+            generate_structured_response("probe", {"type": "boolean"})
+        assert  caught.value.accounting.usage == TokenUsage(10, 20)
+        assert caught.value.accounting.cost_usd == Decimal("0.00005")
+        return
     with pytest.raises(StructuredOutputError) as caught:
         generate_structured_response("probe", {"type": "boolean"})
     response = caught.value.provider_response
     assert response is not None
     assert response.usage == TokenUsage(10, 20)
-    assert response.cost_usd is None
+    assert response.cost_usd == Decimal("0.00005")
+
+
+@pytest.mark.parametrize("structured", [False, True])
+@pytest.mark.parametrize(
+    "choices",
+    [
+        [],
+        [None],
+        [{"finish_reason": "length", "message": {"content": "sensitive-partial"}}],
+        [{"finish_reason": "content_filter", "message": {"content": "sensitive-partial"}}],
+        [{"finish_reason": "stop", "message": {
+            "content": "sensitive-partial", "refusal": "sensitive-refusal",
+        }}],
+        [{"finish_reason": "stop", "message": {"content": None}}],
+        [{"finish_reason": "stop", "message": {"content": ["sensitive-partial"]}}],
+        [{"finish_reason": "stop", "message": {
+            "content": "sensitive-partial", "tool_calls": [{"function": {}}],
+        }}],
+        [{"finish_reason": "stop", "message": {
+            "content": "sensitive-partial", "function_call": {"name": "sensitive-tool"},
+        }}],
+    ],
+)
+def test_rejected_completions_keep_content_free_accounting(
+        endpoint, structured, choices
+) -> None:
+    url, state = endpoint
+    state["body"]["choices"] = choices
+    adapter = provider(url, pricing=ModelPricing(Decimal("1"), Decimal("2")))
+
+    with pytest.raises(RuntimeResponseError) as caught:
+        if structured:
+            generate_structured_response("secret-prompt", {"type": "boolean"}, provider=adapter)
+        else:
+            generate_response("secret-prompt", provider=adapter)
+
+    error = caught.value
+    assert error.accounting.provider_name == "openai-compatible"
+    assert error.accounting.usage == TokenUsage(10, 20)
+    assert error.accounting.cost_usd == Decimal("0.00005")
+    assert  not hasattr(error, "provider_responses")
+    assert not hasattr(error, "content")
+    assert not hasattr(error, "data")
+    assert "sensitive" not in str(error) + repr(error.accounting)
+    assert "secret-prompt" not in str(error) + repr(error.accounting)
+    assert len(state["requests"]) == 1
+
+
+@pytest.mark.parametrize("structured", [False, True])
+@pytest.mark.parametrize(
+    "usage",
+    [
+        None, "missing", [], {},
+        {"prompt_tokens": -1, "completion_tokens": 2},
+        {"prompt_tokens": 1, "completion_tokens": 2, "total_tokens": 99},
+    ],
+)
+def test_rejected_completion_missing_or_invalid_usage_stays_unknow(
+        endpoint, structured, usage
+) -> None:
+    url, state = endpoint
+    state["body"]["choices"][0]["finish_reason"] = "length"
+    if usage == "missing":
+        del state["body"]["usage"]
+    else:
+        state["body"]["usage"] = usage
+    pricing = ModelPricing(Decimal("1"), Decimal("2"))
+
+    with pytest.raises(RuntimeResponseError) as caught:
+        if structured:
+            generate_structured_response("probe", {}, provider=provider(url, pricing=pricing))
+        else:
+            generate_response("probe", provider=provider(url, pricing=pricing))
+
+    assert caught.value.accounting.usage is None
+    assert caught.value.accounting.pricing == pricing
+    assert caught.value.accounting.cost_usd is None
+
+
+@pytest.mark.parametrize("structured", [False, True])
+@pytest.mark.parametrize("pricing", [None, ModelPricing()])
+def test_rejected_completion_unknow_or_zero_pricing(endpoint, structured, pricing):
+    url, state = endpoint
+    state["body"]["choices"][0]["finish_reason"] = "length"
+    with pytest.raises(RuntimeResponseError) as caught:
+        if structured:
+            generate_structured_response("probe", {}, provider=provider(url, pricing=pricing))
+        else:
+            generate_response("probe", provider=provider(url, pricing=pricing))
+
+    assert caught.value.accounting.usage == TokenUsage(10, 20)
+    assert caught.value.accounting.cost_usd == (None if pricing is None else Decimal("0"))
 
 
 @pytest.mark.parametrize("usage", [None, "missing"])
@@ -181,15 +286,23 @@ def test_reported_zero_usage_and_free_pricing(endpoint) -> None:
     assert response.cost_usd == Decimal("0")
 
 
+@pytest.mark.parametrize("structured", [False, True])
 @pytest.mark.parametrize("status", [401, 429, 500, 302, 307])
-def test_http_failure_are_sanitized_without_retry_or_redirect(endpoint, status) -> None:
+def test_http_failure_are_sanitized_without_retry_or_redirect(
+        endpoint, status, structured
+) -> None:
     url, state = endpoint
     state["status"] = status = status
     state["body"] = b"sensitive-provider-body"
     with pytest.raises(ProviderHTTPError) as caught:
-        generate_response("secret-prompt", provider=provider(url, api_key="secret-key"))
+        adapter = provider(url, api_key="secret-key")
+        if structured:
+            generate_structured_response("secret-prompt", {}, provider=adapter)
+        else:
+            generate_response("secret-prompt", provider=adapter)
     assert caught.value.status_code == status
     assert str(caught.value) == f"provider returned HTTP {status}"
+    assert not hasattr(caught.value, "accounting")
     assert len(state["requests"]) == 1
 
 
@@ -212,8 +325,11 @@ def test_http_failure_are_sanitized_without_retry_or_redirect(endpoint, status) 
 def test_malformed_envelopes_fail_explicitly(endpoint, body: Any) -> None:
     url, state = endpoint
     state["body"] = body
-    with pytest.raises(ProviderResponseError):
-        generate_response("probe", provider=provider(url))
+    with pytest.raises(ProviderResponseError) as caught:
+        generate_response("probe", provider=provider(url, pricing=ModelPricing()))
+    assert caught.value.accounting.usage is None
+    assert caught.value.accounting.pricing == ModelPricing()
+    assert caught.value.accounting.cost_usd is None
 
 
 @pytest.mark.parametrize(
@@ -228,11 +344,18 @@ def test_malformed_envelopes_fail_explicitly(endpoint, body: Any) -> None:
         {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": False},
     ],
 )
-def test_invalid_usage_fails(endpoint, usage) -> None:
+@pytest.mark.parametrize("structured", [False, True])
+def test_invalid_usage_fails(endpoint, usage, structured) -> None:
     url, state = endpoint
     state["body"]["usage"] = usage
-    with pytest.raises(ProviderResponseError):
-        generate_response("probe", provider=provider(url))
+    with pytest.raises(RuntimeResponseError) as caught:
+        adapter = provider(url, pricing=ModelPricing())
+        if structured:
+            generate_structured_response("probe", {}, provider=adapter)
+        else:
+            generate_response("probe", provider=adapter)
+    assert caught.value.accounting.usage is None
+    assert caught.value.accounting.cost_usd is None
 
 
 @pytest.mark.parametrize("content", ["not json", '"wrong type"', "NaN"])
@@ -248,14 +371,19 @@ def test_structured_output_failure_preserves_accounting(endpoint, content) -> No
     assert caught.value.provider_response.cost_usd == Decimal("0")
 
 
-def test_timeout(endpoint) -> None:
+@pytest.mark.parametrize("structured", [False, True])
+def test_timeout(endpoint, structured) -> None:
     url, state = endpoint
     state["delay"] = 0.1
     adapter = OpenAICompatibleProvider(
         base_url=url, model="test", timeout_seconds=0.01,
     )
     with pytest.raises(ProviderTimeoutError):
-        generate_response("probe", provider=adapter)
+        if structured:
+            generate_structured_response("probe", {}, provider=adapter)
+        else:
+            generate_response("probe", provider=adapter)
+    assert not hasattr(caught.value, "accounting")
     assert len(state["requests"]) == 1
 
 

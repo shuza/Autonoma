@@ -1,7 +1,8 @@
 import os
 import subprocess
 import sys
-from autonoma_runtime.app import create_app, generate_response
+import pytest
+from autonoma_runtime.app import create_app, generate_response, generate_structured_response
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -36,3 +37,17 @@ def test_module_entrypoint_reports_ready_status() -> None:
     )
 
     assert result.stdout.strip() == "autonoma-ai-runtime:ready:mock-provider:mock-response:runtime-healthcheck"
+
+
+@pytest.mark.parametrize("structured", [False, True])
+@pytest.mark.parametrize("prompt", [None, True, 123, {}, [], "", " \n "])
+def test_malformed_prompt_fails_before_generation(prompt, structured):
+    class UncalledProvider:
+        def generate(self, request):
+            pytest.fail("invalid prompt must not call provider")
+
+    with pytest.raises(ValueError, match="prompt must be a non-empty string"):
+        if structured:
+            generate_structured_response(prompt, {}, provider=UncalledProvider())
+        else:
+            generate_response(prompt, provider=UncalledProvider())

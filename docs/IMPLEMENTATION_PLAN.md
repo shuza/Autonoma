@@ -103,7 +103,9 @@ Implement:
 - [x] token/cost tracking
 - [x] mock provider
 - [x] provider integration
-- [ ] LangGraph where stateful orchestration is useful
+- [x] LangGraph applicability assessed: not applicable to the single-call runtime;
+      explicitly deferred until a concrete stateful AI workflow justifies it.
+      (ADR-0010). LangGraph is not installed or implemented
 
 Do not tightly couple domain models to LangChain/LangGraph types.
 
@@ -132,6 +134,22 @@ Notes for this phase:
 - Configuration uses the documented `AUTONOMA_LLM_PROVIDER` and paired
   `AUTONOMA_LLM_*_USD_PER_MILLION_TOKENS` names consistently through runtime
   generation and its failure paths.
+- Rejected provider completions (including truncation, refusal, non-text output,
+  and invalid choice envelopes) retain validated usage and configured pricing
+  through content-free `ProviderResponseError.accounting`. Missing or malformed
+  usagee remains unknow, never fabricated or returned as a partial success.
+- Non-empty string prompts and the supported schema subset fail closed before
+  generation. Parser limits and unexpected output properties produce sanitized
+  errors; structured-output failures retain received-response accounting.
+
+Completion status:
+
+Phase 3 is complete for the current single-call runtime. Mock and local
+HTTP-backed integration tests verify normal/strucutred generation, invalid
+configuration/input/output, accounting on success and rejection, timeouts,
+HTTP failures, and blocked redirects. No live hosted model or Ollama smoke
+test is claimed. Persistent accounting, retries, tracing, research, and
+stateful AI orchestration are not implemented by this phase.
 
 ---
 

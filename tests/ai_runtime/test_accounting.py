@@ -1,5 +1,5 @@
 import pytest
-from autonoma_runtime.accounting import ModelPricing, TokenUsage
+from autonoma_runtime.accounting import ModelPricing, ProviderAccounting, TokenUsage
 from autonoma_runtime.app import generate_response, generate_structured_response
 from autonoma_runtime.provider import MockProvider, ProviderRequest, ProviderResponse
 from autonoma_runtime.structured_output import (
@@ -139,10 +139,20 @@ def test_accounting_snapshots_cannot_be_mutated() -> None:
     with pytest.raises(FrozenInstanceError):
         setattr(usage, "input_tokens", -1)
     with pytest.raises(FrozenInstanceError):
-        setattr(usage, "input_usd_per_million_tokens", Decimal("-1"))
+        setattr(pricing, "input_usd_per_million_tokens", Decimal("-1"))
 
     assert response.usage == TokenUsage(1000, 2000)
     assert response.cost_usd == Decimal("0.01125")
+
+
+def test_content_free_error_accounting_is_immutable() -> None:
+    accounting = ProviderAccounting("test-provider", TokenUsage(1000, 2000), PRICING)
+    with pytest.raises(FrozenInstanceError):
+        setattr(accounting, "usage", None)
+    with pytest.raises(FrozenInstanceError):
+        setattr(accounting, "pricing", ModelPricing)
+    assert accounting.cost_usd == Decimal("0.01125")
+    assert not hasattr(accounting, "content")
 
 
 def test_schema_failure_still_precedes_accounted_provider_call() -> None:

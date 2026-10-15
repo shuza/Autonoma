@@ -9,12 +9,10 @@ from urllib.error import HTTPError, URLError
 from urllib.parse import urlsplit
 from urllib.request import HTTPRedirectHandler, Request, build_opener
 
-from .accounting import ModelPricing, TokenUsage
-from .provider import ProviderRequest, ProviderResponse
-
-
-class ProviderError(Exception):
-    """Sanitized provider transport or response failure."""
+from .accounting import ModelPricing, ProviderAccounting, TokenUsage
+from .provider import (
+    ProviderError, ProviderRequest, ProviderResponse, ProviderResponseError,
+)
 
 
 class ProviderHTTPError(ProviderError):
@@ -25,10 +23,6 @@ class ProviderHTTPError(ProviderError):
 
 class ProviderTimeoutError(ProviderError):
     """The provider request exceeded its socket timeout."""
-
-
-class ProviderResponseError(ProviderError):
-    """The provider returned an invalid completion envelope."""
 
 
 class _NoRedirects(HTTPRedirectHandler):
@@ -139,11 +133,28 @@ class OpenAICompatibleProvider:
 
         try:
             envelope = json.loads(body, parse_constant=_reject_constant)
-        except (ValueError, UnicodeDecodeError):
-            raise ProviderResponseError("provider response is not valid JSON") from None
+        except (ValueError, RecursionError):
+            raise ProviderResponseError(
+                "provider response is not valid JSON",
+                accounting=ProviderAccounting(self.name, pricing=self._pricing),
+            ) from None
         return self._parse_response(envelope)
 
-    def _parse_response(self, envelope):
+    def _parse_response(self, envelope: Any) -> ProviderResponse:
+        accounting = ProviderAccounting(self.name, pricing=self._pricing)
+        try:
+            if isinstance(envelope, dict):
+                accounting = ProviderAccounting(
+                    self.name, self._parse_usage(envelope.get("usage")), self._pricing
+                )
+                return self._parse_completion(envelope, accounting)
+        except ProviderResponseError as error:
+            error.accounting = accounting
+            raise
+
+    def _parse_completion(
+            self, envelope: Any, accounting: ProviderAccounting
+    ) -> ProviderResponse:
         if not isinstance(envelope, dict):
             raise ProviderResponseError("provider response must be an object")
         choices = envelope.get("choices")
@@ -157,12 +168,21 @@ class OpenAICompatibleProvider:
                 not isinstance(message, dict)
                 or message.get("refusal") is not None
                 or message.get("tool_calls")
+                or message.get("function_call")
                 or not isinstance(message.get("content"), str)
         ):
             raise ProviderResponseError("provider did not return text content")
 
+        return ProviderResponse(
+            content=message["content"],
+            provider_name=self.name,
+            usage=accounting.usage,
+            pricing=accounting.pricing,
+        )
+
+    @staticmethod
+    def _parse_usage(raw_usage: Any) -> TokenUsage | None:
         usage = None
-        raw_usage = envelope.get("usage")
         if raw_usage is not None:
             if not isinstance(raw_usage, dict):
                 raise ProviderResponseError("provider usage must be an object")
@@ -178,9 +198,4 @@ class OpenAICompatibleProvider:
             ):
                 raise ProviderResponseError("provider total token count is inconsistent")
 
-        return ProviderResponse(
-            content=message["content"],
-            provider_name=self.name,
-            usage=usage,
-            pricing=self._pricing,
-        )
+        return usage

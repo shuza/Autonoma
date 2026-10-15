@@ -51,3 +51,18 @@ class ModelPricing:
             return (input_count * input_rate + output_count * output_rate) / Decimal(
                 "1000000"
             )
+
+
+@dataclass(frozen=True)
+class ProviderAccounting:
+    """Content-free accounting snapshot for a received provider completion."""
+
+    provider_name: str
+    usage: TokenUsage | None = None
+    pricing: ModelPricing | None = None
+
+    @property
+    def cost_usd(self) -> Decimal | None:
+        if self.usage is None or self.pricing is None:
+            return None
+        return self.pricing.calculate_cost(self.usage)

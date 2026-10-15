@@ -4,13 +4,31 @@ from dataclasses import dataclass
 from decimal import Decimal
 from typing import Any, Mapping, Protocol
 
-from .accounting import ModelPricing, TokenUsage
+from .accounting import ModelPricing, ProviderAccounting, TokenUsage
+
+
+class ProviderError(Exception):
+    """Sanitized provider transport or response failure."""
+
+
+class ProviderResponseError(ProviderError):
+    """Rejected completion, optionally carrying content-free accounting."""
+
+    def __init__(
+            self, message: str, *, accounting: ProviderAccounting | None = None
+    ):
+        super().__init__(message)
+        self.accounting = accounting
 
 
 @dataclass(frozen=True)
 class ProviderRequest:
     prompt: str
     response_schema: Mapping[str, Any] | None = None
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.prompt, str) or not self.prompt.strip():
+            raise ValueError("prompt must be a non-empty string")
 
 
 @dataclass(frozen=True)

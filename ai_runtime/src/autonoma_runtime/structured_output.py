@@ -39,7 +39,10 @@ class StructuredOutputGenerator:
         prompt: str,
         response_schema: Mapping[str, Any],
     ) -> StructuredOutputResult:
-        _validate_schema(response_schema, path="$")
+        try:
+            _validate_schema(response_schema, path="$")
+        except RecursionError:
+            raise StructuredOutputSchemaError("schema nesting is too deep") from None
         response = self._provider.generate(
             ProviderRequest(prompt=prompt, response_schema=response_schema)
         )
@@ -50,10 +53,10 @@ class StructuredOutputGenerator:
                 parse_float=_parse_finite_float,
             )
             _validate(data, response_schema, path="$")
-        except json.JSONDecodeError as error:
+        except (ValueError, RecursionError):
             raise StructuredOutputError(
                 "provider response is not valid JSON", provider_response=response
-            ) from error
+            ) from None
         except StructuredOutputError as error:
             error.provider_response = response
             raise
@@ -230,7 +233,7 @@ def _validate_object(value: dict[str, Any], schema: Mapping[str, Any], path: str
         unexpected = set(value) - set(properties)
         if unexpected:
             raise StructuredOutputError(
-                f"{path} contains unexpected properties: {', '.join(sorted(unexpected))}"
+                f"{path} contains unexpected properties"
             )
 
     for property_name, property_value in value.items():
