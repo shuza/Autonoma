@@ -137,7 +137,7 @@ Notes for this phase:
 - Rejected provider completions (including truncation, refusal, non-text output,
   and invalid choice envelopes) retain validated usage and configured pricing
   through content-free `ProviderResponseError.accounting`. Missing or malformed
-  usagee remains unknow, never fabricated or returned as a partial success.
+  usage remains unknown, never fabricated or returned as a partial success.
 - Non-empty string prompts and the supported schema subset fail closed before
   generation. Parser limits and unexpected output properties produce sanitized
   errors; structured-output failures retain received-response accounting.
@@ -145,7 +145,7 @@ Notes for this phase:
 Completion status:
 
 Phase 3 is complete for the current single-call runtime. Mock and local
-HTTP-backed integration tests verify normal/strucutred generation, invalid
+HTTP-backed integration tests verify normal/structred generation, invalid
 configuration/input/output, accounting on success and rejection, timeouts,
 HTTP failures, and blocked redirects. No live hosted model or Ollama smoke
 test is claimed. Persistent accounting, retries, tracing, research, and

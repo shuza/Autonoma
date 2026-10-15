@@ -147,7 +147,7 @@ class OpenAICompatibleProvider:
                 accounting = ProviderAccounting(
                     self.name, self._parse_usage(envelope.get("usage")), self._pricing
                 )
-                return self._parse_completion(envelope, accounting)
+            return self._parse_completion(envelope, accounting)
         except ProviderResponseError as error:
             error.accounting = accounting
             raise

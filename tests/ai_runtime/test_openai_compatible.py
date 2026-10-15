@@ -309,7 +309,7 @@ def test_http_failure_are_sanitized_without_retry_or_redirect(
 @pytest.mark.parametrize(
     "body",
     [
-        b"not json", b"\xff", b"NaN", [], {},
+        b"not json", b"\xff", b"NaN", [], {}, None, True, 1, "text",
         {"choices": []}, {"choices": [None]},
         {"choices": [{"finish_reason": "length", "message": {"content": "partial"}}]},
         {"choices": [{"finish_reason": "stop", "message": {"content": None}}]},
@@ -322,11 +322,16 @@ def test_http_failure_are_sanitized_without_retry_or_redirect(
         }}]}
     ],
 )
-def test_malformed_envelopes_fail_explicitly(endpoint, body: Any) -> None:
+@pytest.mark.parametrize("structured", [False, True])
+def test_malformed_envelopes_fail_explicitly(endpoint, body: Any, structured) -> None:
     url, state = endpoint
     state["body"] = body
     with pytest.raises(ProviderResponseError) as caught:
-        generate_response("probe", provider=provider(url, pricing=ModelPricing()))
+        adapter = provider(url, pricing=ModelPricing())
+        if structured:
+            generate_structured_response("probe", {}, provider=adapter)
+        else:
+            generate_response("probe", provider=adapter)
     assert caught.value.accounting.usage is None
     assert caught.value.accounting.pricing == ModelPricing()
     assert caught.value.accounting.cost_usd is None
@@ -378,7 +383,7 @@ def test_timeout(endpoint, structured) -> None:
     adapter = OpenAICompatibleProvider(
         base_url=url, model="test", timeout_seconds=0.01,
     )
-    with pytest.raises(ProviderTimeoutError):
+    with pytest.raises(ProviderTimeoutError) as caught:
         if structured:
             generate_structured_response("probe", {}, provider=adapter)
         else:
