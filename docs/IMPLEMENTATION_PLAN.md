@@ -157,14 +157,17 @@ stateful AI orchestration are not implemented by this phase.
 
 Implement company research.
 
-- [ ] research input schema
-- [ ] research output schema
-- [ ] web research tool
-- [ ] source validation
-- [ ] confidence information
-- [ ] research agent
-- [ ] evaluation cases
-- [ ] tests
+Status: **in progress**. First slice: research from caller-supplied evidence
+using the mock provider through the real service path (ADR-0011).
+
+- [ ] research input schema – partial: `CompanyProfile`, `EvidenceRecord`, `ResearchRequest` are strictly validated; no decision-maker or business-content input yet
+- [ ] research output schema – partial: findings with claim, evidenceIDs, confidence; no decision-maker/structured company profile fields yet
+- [ ] web research tool – not started; evidence is caller-supplied, no fetching or URLs
+- [ ] source validation – partial: only reference integrity (cited IDs must exist); source truthfulness, freshness, and authenticity are not verified
+- [x] confidence information – per-finding confidence in [0, 1], validated; uncalibrated
+- [ ] research agent – not started; only a single-call `research_company` service
+- [ ] evaluation cases – partial: deterministic moc-based case in `tests/ai_runtime/test_research.py`; no dataset or scoring
+- [ ] tests – partial: slice covered incl. failure paths; live-model behavior untested
 
 Definition of done:
 
@@ -412,11 +415,13 @@ Create a reproducible demo:
 
 Current phase:
 
-**Phase 3 — AI runtime**
+**Phase 4 — Research capability (in progress)**
+
+Phase 3 (AI runtime) is complete.
 
 Current task:
 
-**Canonical pricing configuration repaired; stateful orchestration remains deferred until a concrete workflow needs it.**
+**Company research from caller-supplier evidence with the mock provider is implemented. Next smallest slices: decision-maker research output, or a real-provider smoke test; no web tool, qualification, or outreach yet.**
 
 Do not implement future phases until the current phase is complete.
 
