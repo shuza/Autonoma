@@ -84,7 +84,7 @@ class EvidenceRecord:
             raise ResearchInputError(
                 "source_id must be 1-64 characters of letters, digits, '_', '.', ':' or '-'"
             )
-        _text(self.content, "evidence content", MAX_NAME_CHARS)
+        _text(self.content, "evidence content", MAX_EVIDENCE_CHARS)
 
 
 @dataclass(frozen=True)

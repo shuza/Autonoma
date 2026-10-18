@@ -169,6 +169,12 @@ using the mock provider through the real service path (ADR-0011).
 - [ ] evaluation cases – partial: deterministic moc-based case in `tests/ai_runtime/test_research.py`; no dataset or scoring
 - [ ] tests – partial: slice covered incl. failure paths; live-model behavior untested
 
+Slice maintenance:
+
+- Evidence content uses its 4,000-character limit independently of the
+  200-character company-name limit. Service-path cases cover accepted evidence
+  length from 201 through 4,000 and rejection at 4,001 before generation.
+
 Definition of done:
 
 Given a company, Autonoma produces structured research with evidence.

@@ -91,7 +91,7 @@ def test_malformed_output_rejected_with_accounting(content):
         finding(claim="   "),
     ],
 )
-def test_semantic_errors_preserve_accounting(bad: Finding):
+def test_semantic_errors_preserve_accounting(bad):
     with pytest.raises(ResearchOutputError) as caught:
         run({"findings": [finding(), bad]})
 
@@ -124,6 +124,25 @@ def test_invalid_source_id(source_id):
 def test_invalid_evidence_content(content):
     with pytest.raises(ResearchInputError):
         EvidenceRecord("s", content)
+
+
+@pytest.mark.parametrize("length", [200, 201, 3999, 4000])
+def test_evidence_content_limit_through_research_service(length):
+    evidence = (EvidenceRecord("site-1", "x" * length),)
+
+    result = run({"findings": [finding()]}, evidence=evidence)
+
+    assert result.research.findings[0].evidence_ids == ("site-1",)
+    assert result.provider_response.usage == USAGE
+
+
+def test_oversized_evidence_is_rejected_before_provider_call():
+    with pytest.raises(ResearchInputError, match="at most 4000 characters"):
+        research_company(
+            COMPANY,
+            [EvidenceRecord("site-1", "x" * 4001)],
+            provider=UncallProvider(),
+        )
 
 
 class UncallProvider:
