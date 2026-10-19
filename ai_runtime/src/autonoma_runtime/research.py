@@ -98,7 +98,7 @@ def _validate_source_url(value: str | None) -> None:
         parsed.port
         if ":" in host:
             IPv6Address(host)
-            if "%" in host or not re.fullmatch(r"\[[^\]](?::[0-9]+)?", parsed.netloc):
+            if "%" in host or not re.fullmatch(r"\[[^\]]+\](?::[0-9]+)?", parsed.netloc):
                 raise ValueError
         else:
             ascii_host = host.encode("idna").decode("ascii")
@@ -108,7 +108,6 @@ def _validate_source_url(value: str | None) -> None:
             ):
                 raise ValueError
     except (ValueError, UnicodeError):
-        print(f"value =  {value}")
         raise ResearchInputError(message) from None
 
 
