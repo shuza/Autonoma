@@ -160,13 +160,13 @@ Implement company research.
 Status: **in progress**. First slice: research from caller-supplied evidence
 using the mock provider through the real service path (ADR-0011).
 
-- [ ] research input schema – partial: `CompanyProfile`, `EvidenceRecord`, `ResearchRequest` are strictly validated; no decision-maker or business-content input yet
-- [ ] research output schema – partial: findings with claim, evidenceIDs, confidence; no decision-maker/structured company profile fields yet
-- [ ] web research tool – not started; evidence is caller-supplied, no fetching or URLs
-- [ ] source validation – partial: only reference integrity (cited IDs must exist); source truthfulness, freshness, and authenticity are not verified
+- [ ] research input schema – partial: `CompanyProfile`, `EvidenceRecord`, `ResearchRequest` are strictly validated, including optional source URL and timezone-aware retrieval timestamp; no decision-maker or business-content input yet
+- [ ] research output schema – partial: findings with claim, evidenceIDs, confidence, and resolvable cited evidence; no decision-maker/structured company profile fields yet
+- [ ] web research tool – not started; evidence and URL metadata are caller-supplied, never fetched
+- [ ] source validation – partial: reference integrity and provenance metadata syntax are validated; source truthfulness, freshness, and authenticity are not verified
 - [x] confidence information – per-finding confidence in [0, 1], validated; uncalibrated
 - [ ] research agent – not started; only a single-call `research_company` service
-- [ ] evaluation cases – partial: deterministic moc-based case in `tests/ai_runtime/test_research.py`; no dataset or scoring
+- [ ] evaluation cases – partial: deterministic moc-based case in `tests/ai_runtime/test_research.py`, including provenance and citation resolution; no dataset or scoring
 - [ ] tests – partial: slice covered incl. failure paths; live-model behavior untested
 
 Slice maintenance:
