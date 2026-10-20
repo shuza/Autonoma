@@ -125,6 +125,19 @@ When the user asks to "check the next step", always:
 5. avoid jumping to the full remaining phase scope. 
 6. avoid starting a later phase unless explicitly requested.
 
+Before proposing the slice, trace it toward the known end-to-end project goal
+and check existing architecture decisions and the next planned consumers of
+its contracts. Keep implementation small, but design input/output contracts to
+cover already-known requirements. Do not knowingly introduce a temporary
+contract that the next planned step must replace.
+
+Do not add speculative fields, abstractions, compatibility adapters, migration
+layers, or legacy fallbacks. With no established consumers or persisted data
+requiring compatibility, update the current contract and its callers directly.
+Each proposal should explain how it advances the project goal and identify any
+necessary contract change and its reason.
+
+
 Before marking a step or phase item complete during a "check next step" review, always verify all of the following gaps checks:
 
 1. plan vs implementation: the item is implemented in runtime codee, not only mentioned in docs, types, or constants

@@ -176,6 +176,14 @@ Slice maintenance:
   length from 201 through 4,000 and rejection at 4,001 before generation.
 - Provenance regression coverage includes bracketed IPv6 URL metadata, missing
   timezone offsets, prompt data markers, and rejection without rawURL logging.
+- Excerpt citations require `citations: [{"source_id": "...", "excerpt": "..."}]`
+  in provider output (ADR-0013); legacy `evidence_ids` output is rejected.
+  Matching is exact without case/whitespace normalization. Duplicate pairs
+  within a finding are rejected; distinct excerpts from one source are allowrd.
+  Python callers and evidence resolution use citations directly, without a
+  compatibility-only `evidence_ids` proper or migration layer.
+  Schema/seantic failures preserve accounting and never return partial research.
+  Presence is not entailment or verified truth; confidence remains uncalibrated.
 
 Definition of done:
 
