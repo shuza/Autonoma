@@ -52,11 +52,11 @@ def run(content, evidence=EVIDENCE):
 def test_valid_research_with_accounting():
     result = run({"findings": [
         finding(),
-        finding(claim="Berlin", citation=[citation(), citation("new:2", "Berlin")], confidence=1),
+        finding(claim="Berlin", citations=[citation(), citation("news:2", "Berlin")], confidence=1),
     ]})
 
     assert result.research.company_name == "Acme Crop"
-    assert result.research.findings[0].cirations == (ResearchCitation("site-1", "widgets"),)
+    assert result.research.findings[0].citations == (ResearchCitation("site-1", "widgets"),)
     assert not hasattr(result.research.findings[0], "evidence_ids")
     assert result.research.findings[1].confidence == 1.0
     assert result.provider_response.usage == USAGE
@@ -81,7 +81,7 @@ def test_multiple_excerpts_per_source_preserve_citation_order_and_exact_text():
         citation(excerpt="\n  Berlin office"),
         citation(excerpt="widgets"),
     ]
-    result = run({"findings": [finding(citation=citations), finding()]}, evidence)
+    result = run({"findings": [finding(citations=citations), finding()]}, evidence)
     item = result.research.findings[0]
 
     assert item.citations == tuple(ResearchCitation(**value) for value in citations)
@@ -98,9 +98,9 @@ def test_multiple_excerpts_per_source_preserve_citation_order_and_exact_text():
     "acme sells widgets", "cafe\u0301",
 ])
 def test_excerpt_matching_does_not_normalize_whitespace_case_or_unicode(excerpt):
-    evidence = (EvidenceRecord("site-1", "Acme sells  widgets; cafe"))
+    evidence = (EvidenceRecord("site-1", "Acme sells  widgets; cafe"),)
     with pytest.raises(ResearchOutputError) as caught:
-        run({"findings": [finding(citation=[citation(excerpt=excerpt)])]}, evidence)
+        run({"findings": [finding(citations=[citation(excerpt=excerpt)])]}, evidence)
     assert caught.value.provider_response.usage == USAGE
 
 
@@ -340,7 +340,7 @@ def test_evidence_content_limit_through_research_service(length):
     result = run({"findings": [finding(citations=[citation(excerpt="x" * length)])]}, evidence=evidence)
 
     assert result.research.findings[0].citations == (
-        ResearchCitation("site-1", "x" * length)
+        ResearchCitation("site-1", "x" * length),
     )
     assert result.provider_response.usage == USAGE
 
@@ -401,7 +401,7 @@ def test_prompt_example_is_valid_json_and_requires_exact_excerpts():
         "findings": [finding(claim="Company sells widgets", citations=[citation(excerpt="sells widgets")])]
     }
     assert "copied exactly from that record's content" in prompt
-    assert "Preserve case and whitespaces" in prompt
+    assert "Preserve case and whitespace" in prompt
     assert "different excerpts from one source are allowed" in prompt
     assert "evidence_ids" not in prompt
 

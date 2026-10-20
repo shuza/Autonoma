@@ -235,7 +235,7 @@ def build_research_prompt(request: ResearchRequest) -> str:
         "Using ONLY the evidence records between the markers below, produce "
         'JSON about the company in this shape:\n'
         '{"findings": [{"claim": "Company sells widgets", "citations": '
-        '[{"source_id": "site-1", "excerpt: "sell widgets"}], "confidence": 0.8}]}\n'
+        '[{"source_id": "site-1", "excerpt": "sells widgets"}], "confidence": 0.8}]}\n'
         "This is a shape example, not evidence. Each finding must include one "
         "or more citations with a supplied source_id and a nonblank excerpt "
         "copied exactly from that record's content. Preserve case and whitespace; "
