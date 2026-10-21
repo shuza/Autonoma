@@ -161,13 +161,19 @@ Status: **in progress**. First slice: research from caller-supplied evidence
 using the mock provider through the real service path (ADR-0011).
 
 - [ ] research input schema – partial: `CompanyProfile`, `EvidenceRecord`, `ResearchRequest` are strictly validated, including optional source URL and timezone-aware retrieval timestamp; no decision-maker or business-content input yet
-- [ ] research output schema – partial: findings with claim, evidenceIDs, confidence, and resolvable cited evidence; no decision-maker/structured company profile fields yet
+- [ ] research output schema – partial: company findings and decision makers (name, title) each with excerpt citations, confidence, and resolvable cited evidence; no decision-maker/structured company profile fields yet
 - [ ] web research tool – not started; evidence and URL metadata are caller-supplied, never fetched
 - [ ] source validation – partial: reference integrity and provenance metadata syntax are validated; source truthfulness, freshness, and authenticity are not verified
 - [x] confidence information – per-finding confidence in [0, 1], validated; uncalibrated
-- [ ] research agent – not started; only a single-call `research_company` service
+- [ ] research agent – not started; only a single-call `research_company` and `research_decision_makers service
 - [ ] evaluation cases – partial: deterministic moc-based case in `tests/ai_runtime/test_research.py`, including provenance and citation resolution; no dataset or scoring
 - [ ] tests – partial: slice covered incl. failure paths; live-model behavior untested
+
+Decision-maker slice (ADR-0014): `research_decision_makers` returns people with
+`name`, `title`, excerpt `citations` and `confidence` from caller-supplied
+evidence. Name and title must each appear exactly in a cited excerpt; duplicate
+name/title pairs are rejected; no contact fields. Covered in
+`tests/ai_runtime/test_decision_makers.py`
 
 Slice maintenance:
 
@@ -179,10 +185,10 @@ Slice maintenance:
 - Excerpt citations require `citations: [{"source_id": "...", "excerpt": "..."}]`
   in provider output (ADR-0013); legacy `evidence_ids` output is rejected.
   Matching is exact without case/whitespace normalization. Duplicate pairs
-  within a finding are rejected; distinct excerpts from one source are allowrd.
+  within a finding are rejected; distinct excerpts from one source are allowed.
   Python callers and evidence resolution use citations directly, without a
-  compatibility-only `evidence_ids` proper or migration layer.
-  Schema/seantic failures preserve accounting and never return partial research.
+  compatibility-only `evidence_ids` property or migration layer.
+  Schema/semantic failures preserve accounting and never return partial research.
   Presence is not entailment or verified truth; confidence remains uncalibrated.
 
 Definition of done:
