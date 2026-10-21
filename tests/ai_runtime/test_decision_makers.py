@@ -143,6 +143,7 @@ def test_provider_failure_propagates():
 
 def test_prompt_example_is_valid_json_and_has_boundaries():
     prompt = build_decision_maker_prompt(ResearchRequest(COMPANY, EVIDENCE))
+    assert prompt == prompt.strip()
     example = next(line for line in prompt.splitlines() if line.startswith('{"people'))
 
     assert json.loads(example)["people"][0]["citations"][0]["source_id"] == "site-1"

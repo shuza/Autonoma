@@ -333,7 +333,7 @@ def build_decision_maker_prompt(request: ResearchRequest) -> str:
         f"{company}\n"
         "<<<EVIDENCE_DATA\n"
         f"{evidence}\n"
-        "EVIDENCE_DATA>>>\n"
+        "EVIDENCE_DATA>>>"
     )
 
 
