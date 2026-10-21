@@ -333,7 +333,7 @@ def build_decision_maker_prompt(request: ResearchRequest) -> str:
         f"{company}\n"
         "<<<EVIDENCE_DATA\n"
         f"{evidence}\n"
-        "<<<<EVIDENCE_DATA\n"
+        "EVIDENCE_DATA>>>\n"
     )
 
 
@@ -371,7 +371,7 @@ class ResearchService:
         )
 
     def research_decision_makers(self, request: ResearchRequest) -> DecisionMakerResult:
-        if not isinstace(request, ResearchRequest):
+        if not isinstance(request, ResearchRequest):
             raise ResearchInputError("request must be a ResearchRequest")
         result = self._generator.generate(
             build_decision_maker_prompt(request), DECISION_MAKER_RESPONSE_SCHEMA
@@ -404,7 +404,7 @@ def _to_citations(
     citations = []
     seen = set()
     for citation in items:
-        source_id = citations["source_id"]
+        source_id = citation["source_id"]
         excerpt = citation["excerpt"]
         record = evidence_by_id.get(source_id)
         if record is None:
@@ -415,7 +415,7 @@ def _to_citations(
             raise ResearchOutputError(f"{label} citation excerpt is not in its source")
         pair = (source_id, excerpt)
         if pair in seen:
-            raise ResearchOutputError(f"{label}request a citation")
+            raise ResearchOutputError(f"{label} repeats a citation")
         seen.add(pair)
         citations.append(ResearchCitation(source_id, excerpt))
     return tuple(citations)
@@ -434,7 +434,7 @@ def _to_people(
                 raise ResearchOutputError(f"{label} {field} must not be blank")
             if len(value) > MAX_NAME_CHARS:
                 raise ResearchOutputError(
-                    f"{label} {name} must be at most {MAX_NAME_CHARS} character"
+                    f"{label} {field} must be at most {MAX_NAME_CHARS} characters"
                 )
         _check_confidence(item["confidence"], label)
         citations = _to_citations(item["citations"], evidence_by_id, label)
@@ -442,7 +442,7 @@ def _to_people(
             if not any(value in citation.excerpt for citation in citations):
                 raise ResearchOutputError(f"{label} {field} is not in a cited excerpt")
         if (name, title) in seen:
-            raise ResearchOutputError(f"{label}requests a person")
+            raise ResearchOutputError(f"{label} repeats a person")
         seen.add((name, title))
         people.append(DecisionMaker(name, title, citations, float(item["confidence"])))
     return tuple(people)

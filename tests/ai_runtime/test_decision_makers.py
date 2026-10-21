@@ -42,11 +42,11 @@ def run(content, evidence=EVIDENCE):
     prompt = build_decision_maker_prompt(ResearchRequest(COMPANY, evidence))
     if not isinstance(content, str):
         content = json.dumps(content)
-    provider = MockProvider({prompt: content}, usage={prompt: USAGE}, prompt=PRICING)
+    provider = MockProvider({prompt: content}, usage={prompt: USAGE}, pricing=PRICING)
     return research_decision_makers(COMPANY, evidence, provider=provider)
 
 
-def teest_valid_decision_makers_with_accounting_and_cited_evidence():
+def test_valid_decision_makers_with_accounting_and_cited_evidence():
     result = run({"people": [
         person(),
         person(
@@ -60,7 +60,7 @@ def teest_valid_decision_makers_with_accounting_and_cited_evidence():
         "Ada Lovelace", "Chief Executive Officer",
         (ResearchCitation("site-1", "Ada Lovelace, Chief Executive Officer"),), 0.9,
     )
-    assert  result.research.people[1].confidence == 1.0
+    assert result.research.people[1].confidence == 1.0
     assert result.cited_evidence == EVIDENCE
     assert result.provider_response.usage == USAGE
 
@@ -88,7 +88,7 @@ def test_name_and_title_may_come_from_different_excerpts():
     {"name": " ", "citations": [{"source_id": "site-1", "excerpt": " "}]},
     {"name": "A" * 201},
     {"citations": [{"source_id": "missing", "excerpt": "Ada"}]},
-    {"citations": [{"source_id": "site-1", "excerpt": "Ada Lovelace"}]},
+    {"citations": [{"source_id": "site-1", "excerpt": "Ada  Lovelace"}]},
     {"citations": [
         {"source_id": "site-1", "excerpt": "Ada Lovelace, Chief Executive Officer"},
         {"source_id": "site-1", "excerpt": "Ada Lovelace, Chief Executive Officer"},
@@ -123,7 +123,7 @@ def test_malformed_output_is_rejected(content):
 
 def test_insufficient_and_invalid_input_fail_before_provider_call():
     class Uncalled:
-        def generate(self):
+        def generate(self, request):
             raise AssertionError("Provider must not be called")
 
     with pytest.raises(InsufficientEvidenceError):
@@ -134,7 +134,7 @@ def test_insufficient_and_invalid_input_fail_before_provider_call():
 
 def test_provider_failure_propagates():
     class Failing:
-        def generate(self):
+        def generate(self, request):
             raise ProviderError("down")
 
     with pytest.raises(ProviderError):
@@ -143,7 +143,7 @@ def test_provider_failure_propagates():
 
 def test_prompt_example_is_valid_json_and_has_boundaries():
     prompt = build_decision_maker_prompt(ResearchRequest(COMPANY, EVIDENCE))
-    example = next(line for line in prompt.splitelines() if line.startswith('{"people'))
+    example = next(line for line in prompt.splitlines() if line.startswith('{"people'))
 
     assert json.loads(example)["people"][0]["citations"][0]["source_id"] == "site-1"
     assert "Do not output contact details" in prompt
